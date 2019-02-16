@@ -77,6 +77,7 @@
 #include <dcmtk/dcmrt/drtdose.h>
 #include <dcmtk/dcmrt/drtimage.h>
 #include <dcmtk/dcmrt/drtplan.h>
+//TODO: If there is a separate header for ion plans then need to include that
 #include <dcmtk/dcmrt/drtstrct.h>
 
 // MRML includes
@@ -159,6 +160,10 @@ public:
   /// Load brachytherapy plan (called from \sa LoadRtPlan)
   bool LoadBrachyPlan(vtkSlicerDicomRtReader* rtReader, const char* seriesName, vtkMRMLRTPlanNode* planNode);
 
+  /// Load RT Ion Plan and related objects into the MRML scene
+  /// \return Success flag
+  bool LoadRtIonPlan(vtkSlicerDicomRtReader* rtReader, vtkSlicerDICOMLoadable* loadable);
+
   /// Load RT Structure Set and related objects into the MRML scene
   /// \return Success flag
   bool LoadRtStructureSet(vtkSlicerDicomRtReader* rtReader, vtkSlicerDICOMLoadable* loadable);
@@ -234,6 +239,8 @@ void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::ExamineRtDoseDataset(
       }
     }
   }
+  // Find RTIonPlan name for RTDose series?
+  //TODO: See if the reference is the same or not. If not, need to add an else if branch
 
   // Create and open DICOM database to perform database operations for getting RTPlan name
   QSettings settings;
@@ -436,6 +443,9 @@ void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::ExamineRtImageDataset
       }
     }
   }
+
+  // Get referenced RTIonPlan
+  //TODO: See if the reference is the same or not. If not, need to add an else if branch
 }
 
 //---------------------------------------------------------------------------
@@ -551,6 +561,7 @@ bool vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::LoadRtDose(vtkSlicerD
   {
     shNode->SetItemAttribute(seriesItemID, vtkMRMLSubjectHierarchyConstants::GetDICOMReferencedInstanceUIDsAttributeName(),
       rtReader->GetRTDoseReferencedRTPlanSOPInstanceUID());
+    //TODO: See if this function can get the referenced ion plan as well
   }
   else
   {
@@ -912,6 +923,14 @@ bool vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::LoadBrachyPlan(
   }
 
   return true;
+}
+
+//---------------------------------------------------------------------------
+bool vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::LoadRtIonPlan(vtkSlicerDicomRtReader* rtReader, vtkSlicerDICOMLoadable* loadable)
+{
+  //TODO: Add code that loads ion plan here. See function above for example
+
+  return false; //TODO: Change to true when implementation is done
 }
 
 //---------------------------------------------------------------------------
@@ -1671,6 +1690,12 @@ void vtkSlicerDicomRtImportExportModuleLogic::ExamineForLoad(vtkStringArray* fil
     {
       this->Internal->ExamineRtPlanDataset(dataset, name, referencedSOPInstanceUIDs);
     }
+    // RTIonPlan
+    else if (sopClass == UID_RTIonPlanStorage)
+    {
+      // Use the same examine function since there is no difference in that
+      this->Internal->ExamineRtPlanDataset(dataset, name, referencedSOPInstanceUIDs);
+    }
     // RTStructureSet
     else if (sopClass == UID_RTStructureSetStorage)
     {
@@ -1683,7 +1708,6 @@ void vtkSlicerDicomRtImportExportModuleLogic::ExamineForLoad(vtkStringArray* fil
     }
     /* Not yet supported
     else if (sopClass == UID_RTTreatmentSummaryRecordStorage)
-    else if (sopClass == UID_RTIonPlanStorage)
     else if (sopClass == UID_RTIonBeamsTreatmentRecordStorage)
     */
     else
@@ -1744,6 +1768,10 @@ bool vtkSlicerDicomRtImportExportModuleLogic::LoadDicomRT(vtkSlicerDICOMLoadable
   if (rtReader->GetLoadRTPlanSuccessful())
   {
     loadSuccessful = this->Internal->LoadRtPlan(rtReader, loadable);
+  }
+  if (rtReader->GetLoadRTIonPlanSuccessful())
+  {
+    loadSuccessful = this->Internal->LoadRtIonPlan(rtReader, loadable);
   }
 
   // RTIMAGE
