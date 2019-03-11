@@ -77,6 +77,7 @@
 #include <dcmtk/dcmrt/drtdose.h>
 #include <dcmtk/dcmrt/drtimage.h>
 #include <dcmtk/dcmrt/drtplan.h>
+#include <dcmtk/dcmrt/drtionpl.h>
 //TODO: If there is a separate header for ion plans then need to include that
 #include <dcmtk/dcmrt/drtstrct.h>
 
@@ -240,7 +241,7 @@ void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::ExamineRtDoseDataset(
     }
   }
   // Find RTIonPlan name for RTDose series?
-  //TODO: See if the reference is the same or not. If not, need to add an else if branch
+  //TODO: See if the reference is the same or not. If not, need to add an else if branch //the reference appears to be the same
 
   // Create and open DICOM database to perform database operations for getting RTPlan name
   QSettings settings;
@@ -268,9 +269,9 @@ void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::ExamineRtDoseDataset(
 void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::ExamineRtPlanDataset(DcmDataset* dataset, OFString &name, std::vector<OFString> & vtkNotUsed(referencedSOPInstanceUIDs))
 {
   if (!dataset)
-    {
+  {
     return;
-    }
+  }
 
   // Assemble name
   name += "RTPLAN";
@@ -304,9 +305,9 @@ void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::ExamineRtPlanDataset(
 void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::ExamineRtStructureSetDataset(DcmDataset* dataset, OFString &name, std::vector<OFString> &referencedSOPInstanceUIDs)
 {
   if (!dataset)
-    {
+  {
     return;
-    }
+  }
 
   // Assemble name
   name += "RTSTRUCT";
@@ -415,9 +416,9 @@ void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::ExamineRtStructureSet
 void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::ExamineRtImageDataset(DcmDataset* dataset, OFString &name, std::vector<OFString> &referencedSOPInstanceUIDs)
 {
   if (!dataset)
-    {
+  {
     return;
-    }
+  }
 
   // Assemble name
   name += "RTIMAGE";
@@ -443,6 +444,7 @@ void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::ExamineRtImageDataset
       }
     }
   }
+
 
   // Get referenced RTIonPlan
   //TODO: See if the reference is the same or not. If not, need to add an else if branch
@@ -928,9 +930,193 @@ bool vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::LoadBrachyPlan(
 //---------------------------------------------------------------------------
 bool vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::LoadRtIonPlan(vtkSlicerDicomRtReader* rtReader, vtkSlicerDICOMLoadable* loadable)
 {
-  //TODO: Add code that loads ion plan here. See function above for example
+  vtkMRMLScene* scene = this->External->GetMRMLScene();
+  if (!scene)
+  {
+    vtkErrorWithObjectMacro(this->External, "LoadRtIonPlan: Invalid MRML scene");
+    return false;
+  }
+  vtkMRMLSubjectHierarchyNode* shNode = vtkMRMLSubjectHierarchyNode::GetSubjectHierarchyNode(this->External->GetMRMLScene());
+  if (!shNode)
+  {
+    vtkErrorWithObjectMacro(this->External, "LoadRtIonPlan: Failed to access subject hierarchy node");
+    return false;
+  }
 
-  return false; //TODO: Change to true when implementation is done
+  vtkSmartPointer<vtkMRMLModelHierarchyNode> beamModelHierarchyRootNode;
+
+  const char* seriesName = loadable->GetName();
+
+  scene->StartState(vtkMRMLScene::BatchProcessState);
+
+  // Create plan node
+  vtkSmartPointer<vtkMRMLRTPlanNode> planNode = vtkSmartPointer<vtkMRMLRTPlanNode>::New();
+  planNode->SetName(seriesName);
+  scene->AddNode(planNode);
+
+  // Set up plan subject hierarchy node
+  vtkIdType planShItemID = planNode->GetPlanSubjectHierarchyItemID();
+  if (planShItemID == vtkMRMLSubjectHierarchyNode::INVALID_ITEM_ID)
+  {
+    vtkErrorWithObjectMacro(this->External, "LoadRtIonPlan: Created RT plan node, but it doesn't have a subject hierarchy item");
+    return false;
+  }
+
+  // Attach attributes to plan subject hierarchy item
+  shNode->SetItemUID(planShItemID, vtkMRMLSubjectHierarchyConstants::GetDICOMUIDName(), rtReader->GetSeriesInstanceUid());
+  shNode->SetItemName(planShItemID, seriesName);
+
+  const char* referencedStructureSetSopInstanceUid = rtReader->GetRTPlanReferencedStructureSetSOPInstanceUID();
+  const char* referencedDoseSopInstanceUids = rtReader->GetRTPlanReferencedDoseSOPInstanceUIDs();
+  std::string referencedSopInstanceUids = "";
+  if (referencedStructureSetSopInstanceUid)
+  {
+    referencedSopInstanceUids = std::string(referencedStructureSetSopInstanceUid);
+  }
+  if (referencedDoseSopInstanceUids)
+  {
+    referencedSopInstanceUids = referencedSopInstanceUids +
+      (referencedStructureSetSopInstanceUid ? " " : "") + std::string(referencedDoseSopInstanceUids);
+  }
+  shNode->SetItemAttribute(planShItemID,
+    vtkMRMLSubjectHierarchyConstants::GetDICOMReferencedInstanceUIDsAttributeName(), referencedSopInstanceUids);
+
+  // Load beams in plan
+  int numberOfBeams = rtReader->GetNumberOfBeams();
+  for (int beamIndex = 0; beamIndex < numberOfBeams; beamIndex++) // DICOM starts indexing from 1
+  {
+    unsigned int dicomBeamNumber = rtReader->GetBeamNumberForIndex(beamIndex);
+    const char* beamName = rtReader->GetBeamName(dicomBeamNumber);
+
+    // Create the beam node
+    vtkSmartPointer<vtkMRMLRTBeamNode> beamNode = vtkSmartPointer<vtkMRMLRTBeamNode>::New();
+    beamNode->SetName(beamName);
+
+    // Set beam geometry parameters from DICOM
+    double jawPositions[2][2] = { { 0.0, 0.0 },{ 0.0, 0.0 } };
+    rtReader->GetBeamLeafJawPositions(dicomBeamNumber, jawPositions);
+    beamNode->SetX1Jaw(jawPositions[0][0]);
+    beamNode->SetX2Jaw(jawPositions[0][1]);
+    beamNode->SetY1Jaw(jawPositions[1][0]);
+    beamNode->SetY2Jaw(jawPositions[1][1]);
+
+    beamNode->SetGantryAngle(rtReader->GetBeamGantryAngle(dicomBeamNumber));
+    beamNode->SetCollimatorAngle(rtReader->GetBeamBeamLimitingDeviceAngle(dicomBeamNumber));
+    beamNode->SetCouchAngle(rtReader->GetBeamPatientSupportAngle(dicomBeamNumber));
+
+    beamNode->SetSAD(rtReader->GetBeamSourceAxisDistance(dicomBeamNumber));
+
+    // Set isocenter to parent plan
+    double* isocenter = rtReader->GetBeamIsocenterPositionRas(dicomBeamNumber);
+    planNode->SetIsocenterSpecification(vtkMRMLRTPlanNode::ArbitraryPoint);
+    if (beamIndex == 0)
+    {
+      if (!planNode->SetIsocenterPosition(isocenter))
+      {
+        vtkErrorWithObjectMacro(this->External, "LoadRtIonPlan: Failed to set isocenter position");
+        return false;
+      }
+    }
+    else
+    {
+      double planIsocenter[3] = { 0.0, 0.0, 0.0 };
+      if (!planNode->GetIsocenterPosition(planIsocenter))
+      {
+        vtkErrorWithObjectMacro(this->External, "LoadRtIonPlan: Failed to get plan isocenter position");
+        return false;
+      }
+      //TODO: Multiple isocenters per plan is not yet supported. Will be part of the beams group nodes developed later
+      if (!vtkSlicerRtCommon::AreEqualWithTolerance(planIsocenter[0], isocenter[0])
+        || !vtkSlicerRtCommon::AreEqualWithTolerance(planIsocenter[1], isocenter[1])
+        || !vtkSlicerRtCommon::AreEqualWithTolerance(planIsocenter[2], isocenter[2]))
+      {
+        vtkErrorWithObjectMacro(this->External, "LoadRtIonPlan: Different isocenters for each beam are not yet supported! The first isocenter will be used for the whole plan " << planNode->GetName() << ": (" << planIsocenter[0] << ", " << planIsocenter[1] << ", " << planIsocenter[2] << ")");
+      }
+    }
+
+    // Add beam to scene (triggers poly data and transform creation and update)
+    scene->AddNode(beamNode);
+    // Add beam to plan
+    planNode->AddBeam(beamNode);
+    // Update beam transforms (batch processing prevents processing events that would do this)
+    this->External->BeamsLogic->UpdateTransformForBeam(beamNode);
+
+    // Create beam model hierarchy root node if has not been created yet
+    if (beamModelHierarchyRootNode.GetPointer() == NULL)
+    {
+      beamModelHierarchyRootNode = vtkSmartPointer<vtkMRMLModelHierarchyNode>::New();
+      std::string beamModelHierarchyRootNodeName = seriesName + vtkSlicerRtCommon::DICOMRTIMPORT_BEAMMODEL_HIERARCHY_NODE_NAME_POSTFIX;
+      beamModelHierarchyRootNodeName = scene->GenerateUniqueName(beamModelHierarchyRootNodeName);
+      beamModelHierarchyRootNode->SetName(beamModelHierarchyRootNodeName.c_str());
+      beamModelHierarchyRootNode->SetAttribute(vtkMRMLSubjectHierarchyConstants::GetSubjectHierarchyExcludeFromTreeAttributeName().c_str(), "1");
+      scene->AddNode(beamModelHierarchyRootNode);
+
+      // Create display node for the hierarchy node
+      vtkSmartPointer<vtkMRMLModelDisplayNode> beamModelHierarchyRootDisplayNode = vtkSmartPointer<vtkMRMLModelDisplayNode>::New();
+      std::string beamModelHierarchyRootDisplayNodeName = beamModelHierarchyRootNodeName + std::string("Display");
+      beamModelHierarchyRootDisplayNode->SetName(beamModelHierarchyRootDisplayNodeName.c_str());
+      beamModelHierarchyRootDisplayNode->SetVisibility(1);
+      scene->AddNode(beamModelHierarchyRootDisplayNode);
+      beamModelHierarchyRootNode->SetAndObserveDisplayNodeID(beamModelHierarchyRootDisplayNode->GetID());
+    }
+
+    // Put beam model in the model hierarchy
+    vtkSmartPointer<vtkMRMLModelHierarchyNode> beamModelHierarchyNode = vtkSmartPointer<vtkMRMLModelHierarchyNode>::New();
+    std::string beamModelHierarchyNodeName = std::string(beamNode->GetName()) + vtkSlicerRtCommon::DICOMRTIMPORT_MODEL_HIERARCHY_NODE_NAME_POSTFIX;
+    beamModelHierarchyNode->SetName(beamModelHierarchyNodeName.c_str());
+    scene->AddNode(beamModelHierarchyNode);
+    beamModelHierarchyNode->SetAssociatedNodeID(beamNode->GetID());
+    beamModelHierarchyNode->SetParentNodeID(beamModelHierarchyRootNode->GetID());
+    beamModelHierarchyNode->SetIndexInParent(beamIndex);
+    beamModelHierarchyNode->HideFromEditorsOn();
+
+    // Create display node for the hierarchy node
+    vtkSmartPointer<vtkMRMLModelDisplayNode> beamModelHierarchyDisplayNode = vtkSmartPointer<vtkMRMLModelDisplayNode>::New();
+    std::string beamModelHierarchyDisplayNodeName = beamModelHierarchyNodeName + std::string("Display");
+    beamModelHierarchyDisplayNode->SetName(beamModelHierarchyDisplayNodeName.c_str());
+    beamModelHierarchyDisplayNode->SetVisibility(1);
+    scene->AddNode(beamModelHierarchyDisplayNode);
+    beamModelHierarchyNode->SetAndObserveDisplayNodeID(beamModelHierarchyDisplayNode->GetID());
+  }
+
+  // Insert plan isocenter series in subject hierarchy
+  vtkSlicerDicomRtImportExportModuleLogic::InsertSeriesInSubjectHierarchy(rtReader, scene);
+
+  // Put plan SH item underneath study
+  vtkIdType studyItemID = shNode->GetItemByUID(
+    vtkMRMLSubjectHierarchyConstants::GetDICOMUIDName(), rtReader->GetStudyInstanceUid());
+  if (studyItemID == vtkMRMLSubjectHierarchyNode::INVALID_ITEM_ID)
+  {
+    vtkErrorWithObjectMacro(this->External, "LoadRtIonPlan: Failed to find study subject hierarchy item");
+    return false;
+  }
+  if (planShItemID != vtkMRMLSubjectHierarchyNode::INVALID_ITEM_ID)
+  {
+    shNode->SetItemParent(planShItemID, studyItemID);
+  }
+  // Put plan markups under study within SH
+  vtkIdType planMarkupsShItemID = shNode->GetItemByDataNode(planNode->GetPoisMarkupsFiducialNode());
+  if (planMarkupsShItemID != vtkMRMLSubjectHierarchyNode::INVALID_ITEM_ID)
+  {
+    shNode->SetItemParent(planMarkupsShItemID, studyItemID);
+  }
+
+  // Compute and set geometry of possible RT image that references the loaded beams.
+  // Uses the referenced RT image if available, otherwise the geometry will be set up when loading the corresponding RT image
+  vtkSmartPointer<vtkCollection> beams = vtkSmartPointer<vtkCollection>::New();
+  planNode->GetBeams(beams);
+  if (beams)
+  {
+    for (int i = 0; i<beams->GetNumberOfItems(); ++i)
+    {
+      vtkMRMLRTBeamNode *beamNode = vtkMRMLRTBeamNode::SafeDownCast(beams->GetItemAsObject(i));
+      this->SetupRtImageGeometry(beamNode);
+    }
+  }
+
+  scene->EndState(vtkMRMLScene::BatchProcessState);
+
+  return true;
 }
 
 //---------------------------------------------------------------------------
@@ -1556,7 +1742,7 @@ double vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::CalculateSliceSpaci
   /// will not be found to be regular along the Series"
   gdcm::IPPSorter imageSorter = gdcm::IPPSorter();
   imageSorter.SetComputeZSpacing(true);
-  //imageSorter.SetZSpacingTolerance(0.000001); // 1e-6 is the default value for Z-spacing tolerance 
+  //imageSorter.SetZSpacingTolerance(0.000001); // 1e-6 is the default value for Z-spacing tolerance
   //imageSorter.SetDirectionCosinesTolerance(0); // 0 is the default value for direction cosine tolerance
   imageSorter.Sort(filesForSeries);
   sliceSpacing = imageSorter.GetZSpacing();
