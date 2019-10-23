@@ -128,8 +128,9 @@ public:
     double BeamLimitingDeviceAngle;
     /// Jaw positions: X and Y positions with isocenter as origin (e.g. {{-50,50}{-50,50}} )
     double LeafJawPositions[2][2];
-    unsigned int nofLeafJawPairs; // Number of Leaf/Jaw Pairs (N)
-    std::vector<double> LeafPositionBoundaries; // (N+1) values
+    /// MLC parameters: number of pairs and position boundaries
+    int nofLeafJawPairs[2]; // [0] - MLCX, [1] - MLCY
+    std::vector<double> LeafPositionBoundaries[2]; // [0] - MLCX, [1] - MLCY
   };
 
   /// List of loaded beams from external beam plan
