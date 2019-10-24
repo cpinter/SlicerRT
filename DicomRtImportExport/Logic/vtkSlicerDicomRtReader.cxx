@@ -66,6 +66,23 @@ public:
   ~vtkInternal();
 
 public:
+  /// Structure storing a Beam Limiting Device Parameters (MLC)
+  class BeamLimitingDeviceEntry {
+  public:
+    BeamLimitingDeviceEntry()
+      :
+      SourceToBeamLimitingDeviceDistance(-1.),
+      NumberOfLeafJawPairs(0)
+    {
+    }
+
+    double SourceToBeamLimitingDeviceDistance;
+    unsigned int NumberOfLeafJawPairs;
+    std::vector<double> LeafPositionBoundary;
+  };
+
+  BeamLimitingDeviceEntry BeamLimitingDeviceMLC[2]; // [0] - MLCX, [1] - MLCY
+
   /// Structure storing a ROI of an RT structure set
   class RoiEntry
   {
@@ -129,8 +146,9 @@ public:
     /// Jaw positions: X and Y positions with isocenter as origin (e.g. {{-50,50}{-50,50}} )
     double LeafJawPositions[2][2];
     /// MLC parameters: number of pairs and position boundaries
-    int nofLeafJawPairs[2]; // [0] - MLCX, [1] - MLCY
-    std::vector<double> LeafPositionBoundaries[2]; // [0] - MLCX, [1] - MLCY
+    static unsigned int MLC_NUMBER_OF_LEAF_JAW_PAIRS[2]; // [0] - MLCX, [1] - MLCY
+    static std::vector<double> MLC_LEAF_POSITION_BOUNDARIES[2]; // [0] - MLCX, [1] - MLCY
+    std::vector<double> MLCLeafJawPositions[2]; // [0] - MLCX, [1] - MLCY
   };
 
   /// List of loaded beams from external beam plan
@@ -202,6 +220,10 @@ public:
 
 //----------------------------------------------------------------------------
 // vtkInternal methods
+unsigned int vtkSlicerDicomRtReader::vtkInternal::BeamEntry::MLC_NUMBER_OF_LEAF_JAW_PAIRS[0] = 0;
+unsigned int vtkSlicerDicomRtReader::vtkInternal::BeamEntry::MLC_NUMBER_OF_LEAF_JAW_PAIRS[1] = 0;
+std::vector<double> vtkSlicerDicomRtReader::vtkInternal::BeamEntry::MLC_LEAF_POSITION_BOUNDARIES[0] = std::vector<double>();
+std::vector<double> vtkSlicerDicomRtReader::vtkInternal::BeamEntry::MLC_LEAF_POSITION_BOUNDARIES[1] = std::vector<double>();
 
 //----------------------------------------------------------------------------
 vtkSlicerDicomRtReader::vtkInternal::vtkInternal(vtkSlicerDicomRtReader* external)
@@ -563,6 +585,37 @@ void vtkSlicerDicomRtReader::vtkInternal::LoadRTPlan(DcmDataset* dataset)
       currentBeamSequenceItem.getSourceAxisDistance(sourceAxisDistance);
       beamEntry.SourceAxisDistance = sourceAxisDistance;
 
+      const DRTBeamLimitingDeviceSequenceInRTBeamsModule& rtBeamLimitingDeviceSequence = 
+        currentBeamSequenceItem.getBeamLimitingDeviceSequence();
+      if (rtBeamLimitingDeviceSequence.gotoFirstItem().good()) {
+        do {
+          DRTBeamLimitingDeviceSequenceInRTBeamsModule::Item &collimatorItem =
+            rtBeamLimitingDeviceSequence.getCurrentItem();
+          if (collimatorItem.isValid()) {
+            OFString deviceType("");
+            Sint32 nofPairs = -1;
+
+			collimatorItem.getRTBeamLimitingDeviceType(deviceType);
+            if (deviceType == "MLCX" || deviceType == "MLCY") {
+              OFCondition getNumberOfPairsCondition = collimatorItem.getNumberOfLeafJawPairs(nofPairs);
+              if (getNumberOfPairsCondition.good() && nofPairs > 0) {
+				
+                OFVector<vtkTypeFloat64> leafPositionBoundaries;
+                OFCondition getBoundariesCondition = collimatorItem.getLeafPositionBoundaries(leafPositionBoundaries);
+                if (getBoundariesCondition.good()/* && leafPositionBoundaries.size() == (nofPairs + 1)*/) {
+                  if (deviceType == "MLCX") {
+			        BeamEntry::MLC_NUMBER_OF_LEAF_JAW_PAIRS[0] = nofPairs;
+                  }
+                  else if (deviceType == "MLCY") {
+                    BeamEntry::MLC_NUMBER_OF_LEAF_JAW_PAIRS[1] = nofPairs;
+                  }
+				}
+              }
+            }
+          }
+        } while (currentCollimatorPositionSequence.gotoNextItem().good());
+      }
+									
       DRTControlPointSequence &rtControlPointSequence = currentBeamSequenceItem.getControlPointSequence();
       if (!rtControlPointSequence.gotoFirstItem().good())
       {
