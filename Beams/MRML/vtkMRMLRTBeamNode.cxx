@@ -483,7 +483,6 @@ void vtkMRMLRTBeamNode::CreateBeamPolyData(vtkPolyData* beamModelPolyData/*=null
   vtkMRMLDoubleArrayNode* mlcArrayNode = this->GetMLCPositionDoubleArrayNode();
   if (mlcArrayNode)
   {
-    vtkGenericWarningMacro("MLC Position DoubleArrayNode is valid");
     // First we extract the shape of the MLC
     int y2count = -(this->Y2Jaw/10.0);
     int y1count = -(this->Y1Jaw/10.0);
@@ -575,7 +574,6 @@ void vtkMRMLRTBeamNode::CreateBeamPolyData(vtkPolyData* beamModelPolyData/*=null
   }
   else
   {
-    vtkGenericWarningMacro("MLC Position DoubleArrayNode is invalid");
     points->InsertPoint(0,0,0,this->SAD);
     points->InsertPoint(1, 2*this->X1Jaw, 2*this->Y1Jaw, -this->SAD );
     points->InsertPoint(2, 2*this->X1Jaw, 2*this->Y2Jaw, -this->SAD );
