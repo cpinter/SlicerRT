@@ -75,15 +75,30 @@ public:
   /// \param internalIndex Internal index of ROI to get
   int GetRoiNumber(unsigned int internalIndex);
 
-  /// Get MLC parameters
+  /// Get MLCX parameters
   /// \param distance Source to MLC distance (RTPlan), or Isocenter to MLC distance (RTIonPlan)
   /// \param nofPairs Number of leaf pairs
-  /// \param pairBoundaries Array in which the leaves boundaries are copied
+  /// \param pairBoundaries Array in which the raw leaves boundaries are copied
   /// \return true if data is valid, false otherwise
   bool GetMultiLeafCollimatorX( double& distance, unsigned int& nofPairs, std::vector<double>& pairBoundaries);
+
+  /// Get MLCX parameters
+  /// \param distance Source to MLC distance (RTPlan), or Isocenter to MLC distance (RTIonPlan)
+  /// \param pairBoundaries Array in which the pairs of leaf boundaries are copied
+  /// \return true if data is valid, false otherwise
   bool GetMultiLeafCollimatorX( double& distance, std::vector< std::pair< double, double> >& pairBoundaries);
-  
+
+  /// Get MLCY parameters
+  /// \param distance Source to MLC distance (RTPlan), or Isocenter to MLC distance (RTIonPlan)
+  /// \param nofPairs Number of leaf pairs
+  /// \param pairBoundaries Array in which the raw leaves boundaries are copied
+  /// \return true if data is valid, false otherwise
   bool GetMultiLeafCollimatorY( double& distance, unsigned int& nofPairs, std::vector<double>& pairBoundaries);
+
+  /// Get MLCY parameters
+  /// \param distance Source to MLC distance (RTPlan), or Isocenter to MLC distance (RTIonPlan)
+  /// \param pairBoundaries Array in which the pairs of leaf boundaries are copied
+  /// \return true if data is valid, false otherwise
   bool GetMultiLeafCollimatorY( double& distance, std::vector< std::pair< double, double> >& pairBoundaries);
 
   /// Get number of beams
@@ -114,13 +129,24 @@ public:
   /// \param jawPositions Array in which the jaw positions are copied
   void GetBeamLeafJawPositions(unsigned int beamNumber, double jawPositions[2][2]);
 
-  /// Get MLC leaves positions opening for a given beam
-  /// \param jawPositions Array in which the jaw positions are copied
+  /// Get MLCX leaves positions opening for a given beam
+  /// \param jawPositions Array in which the raw leaves positions are copied
   /// \return true if data is valid, false otherwise
   bool GetBeamMultiLeafCollimatorPositionsX( unsigned int beamNumber, std::vector<double>& jawPositions);
+
+  /// Get MLCX leaves positions opening for a given beam
+  /// \param jawPositions Array in which the pairs of leaves positions are copied
+  /// \return true if data is valid, false otherwise
   bool GetBeamMultiLeafCollimatorPositionsX( unsigned int beamNumber, std::vector< std::pair< double, double> >& jawPositions);
 
+  /// Get MLCY leaves positions opening for a given beam
+  /// \param jawPositions Array in which the raw leaves positions are copied
+  /// \return true if data is valid, false otherwise
   bool GetBeamMultiLeafCollimatorPositionsY( unsigned int beamNumber, std::vector<double>& jawPositions);
+
+  /// Get MLCY leaves positions opening for a given beam
+  /// \param jawPositions Array in which the pairs of leaves positions are copied
+  /// \return true if data is valid, false otherwise
   bool GetBeamMultiLeafCollimatorPositionsY( unsigned int beamNumber, std::vector< std::pair< double, double> >& jawPositions);
 
   /// Get number of channels

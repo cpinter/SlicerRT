@@ -82,7 +82,7 @@ public:
     std::vector<double> LeafPositionBoundary;
   };
   /// [0] - MLCX, [1] - MLCY
-  BeamLimitingDeviceEntry MultiLeafCollimator[6];
+  BeamLimitingDeviceEntry MultiLeafCollimator[2];
 
   /// Structure storing a ROI of an RT structure set
   class RoiEntry
@@ -597,7 +597,7 @@ void vtkSlicerDicomRtReader::vtkInternal::LoadRTPlan(DcmDataset* dataset)
               collimatorItem.getSourceToBeamLimitingDeviceDistance(sourceToMLCDistance);
               
               OFCondition getNumberOfPairsCondition = collimatorItem.getNumberOfLeafJawPairs(nofPairs);
-              if (getNumberOfPairsCondition.good() && nofPairs > 0) {
+              if (getNumberOfPairsCondition.good()/* && nofPairs > 0 */) {
 				
                 OFVector<vtkTypeFloat64> leafPositionBoundaries;
                 OFCondition getBoundariesCondition = collimatorItem.getLeafPositionBoundaries(leafPositionBoundaries);
@@ -960,7 +960,7 @@ void vtkSlicerDicomRtReader::vtkInternal::LoadRTIonPlan(DcmDataset* dataset)
               collimatorItem.getIsocenterToBeamLimitingDeviceDistance(isocenterToMLCDistance);
               
               OFCondition getNumberOfPairsCondition = collimatorItem.getNumberOfLeafJawPairs(nofPairs);
-              if (getNumberOfPairsCondition.good() && nofPairs > 0) {
+              if (getNumberOfPairsCondition.good()/* && nofPairs > 0 */) {
 				
                 OFVector<vtkTypeFloat64> leafPositionBoundaries;
                 OFCondition getBoundariesCondition = collimatorItem.getLeafPositionBoundaries(leafPositionBoundaries);
