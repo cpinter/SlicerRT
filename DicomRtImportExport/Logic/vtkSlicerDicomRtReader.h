@@ -35,6 +35,9 @@
 // SlicerRtCommon includes
 #include "vtkSlicerDicomReaderBase.h"
 
+// STD includes
+#include <vector>
+
 class vtkPolyData;
 
 /// \ingroup SlicerRt_QtModules_DicomRtImport
@@ -72,12 +75,16 @@ public:
   /// \param internalIndex Internal index of ROI to get
   int GetRoiNumber(unsigned int internalIndex);
 
-  /// Get number of leaf jaw pairs and boundaries for MLC
-  /// \param nofPairs Number of leaf pairs (N leaves)
-  /// \param pairBoundaries Array in which the leaves boundaries are copied (N+1 boundaries)
-  void GetNumberOfLeavesAndBoundariesMLCX( unsigned int& nofPairs, double* pairBoundaries);
-  void GetNumberOfLeavesAndBoundariesMLCY( unsigned int& nofPairs, double* pairBoundaries);
-
+  /// Get MLC parameters
+  /// \param distance Source to MLC distance (RTPlan), or Isocenter to MLC distance (RTIonPlan)
+  /// \param nofPairs Number of leaf pairs
+  /// \param pairBoundaries Array in which the leaves boundaries are copied
+  /// \return true if data is valid, false otherwise
+  bool GetMultiLeafCollimatorX( double& distance, unsigned int& nofPairs, std::vector<double>& pairBoundaries);
+  bool GetMultiLeafCollimatorX( double& distance, std::vector< std::pair< double, double> >& pairBoundaries);
+  
+  bool GetMultiLeafCollimatorY( double& distance, unsigned int& nofPairs, std::vector<double>& pairBoundaries);
+  bool GetMultiLeafCollimatorY( double& distance, std::vector< std::pair< double, double> >& pairBoundaries);
 
   /// Get number of beams
   int GetNumberOfBeams();
@@ -108,10 +115,13 @@ public:
   void GetBeamLeafJawPositions(unsigned int beamNumber, double jawPositions[2][2]);
 
   /// Get MLC leaves positions opening for a given beam
-  /// \param jawPositions pointer to jaw positions (opening) 
-  void GetBeamLeafJawPositionsMLCX( unsigned int beamNumber, double* jawPositions);
-  void GetBeamLeafJawPositionsMLCY( unsigned int beamNumber, double* jawPositions);
+  /// \param jawPositions Array in which the jaw positions are copied
+  /// \return true if data is valid, false otherwise
+  bool GetBeamMultiLeafCollimatorPositionsX( unsigned int beamNumber, std::vector<double>& jawPositions);
+  bool GetBeamMultiLeafCollimatorPositionsX( unsigned int beamNumber, std::vector< std::pair< double, double> >& jawPositions);
 
+  bool GetBeamMultiLeafCollimatorPositionsY( unsigned int beamNumber, std::vector<double>& jawPositions);
+  bool GetBeamMultiLeafCollimatorPositionsY( unsigned int beamNumber, std::vector< std::pair< double, double> >& jawPositions);
 
   /// Get number of channels
   int GetNumberOfChannels();
