@@ -39,7 +39,10 @@
 #include <array>
 #include <vector>
 #include <map>
+<<<<<<< HEAD
 //#include <iostream>
+=======
+>>>>>>> testing
 
 // DCMTK includes
 #include <dcmtk/config/osconfig.h>    /* make sure OS specific configuration is included first */
