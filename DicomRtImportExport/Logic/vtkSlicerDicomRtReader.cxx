@@ -590,14 +590,13 @@ void vtkSlicerDicomRtReader::vtkInternal::LoadRTPlan(DcmDataset* dataset)
             OFString deviceType("");
             Sint32 nofPairs = -1;
 
-			collimatorItem.getRTBeamLimitingDeviceType(deviceType);
+            collimatorItem.getRTBeamLimitingDeviceType(deviceType);
             if (deviceType == "MLCX" || deviceType == "MLCY") {
               Float64 sourceToMLCDistance = -1.;
               collimatorItem.getSourceToBeamLimitingDeviceDistance(sourceToMLCDistance);
               
               OFCondition getNumberOfPairsCondition = collimatorItem.getNumberOfLeafJawPairs(nofPairs);
               if (getNumberOfPairsCondition.good()/* && nofPairs > 0 */) {
-				
                 OFVector<vtkTypeFloat64> leafPositionBoundaries;
                 OFCondition getBoundariesCondition = collimatorItem.getLeafPositionBoundaries(leafPositionBoundaries);
                 if (getBoundariesCondition.good()/* && leafPositionBoundaries.size() == (nofPairs + 1)*/) {
@@ -609,25 +608,25 @@ void vtkSlicerDicomRtReader::vtkInternal::LoadRTPlan(DcmDataset* dataset)
                   std::vector<double>& boundY = MultiLeafCollimator[1].LeafPositionBoundary;
                   if (deviceType == "MLCX") {
                     distanceX = sourceToMLCDistance;
-			        pairsX = nofPairs;
-			        boundX.resize(leafPositionBoundaries.size());
-			        std::copy( leafPositionBoundaries.begin(), leafPositionBoundaries.end(), boundX.begin());
+                    pairsX = nofPairs;
+                    boundX.resize(leafPositionBoundaries.size());
+                    std::copy( leafPositionBoundaries.begin(), leafPositionBoundaries.end(), boundX.begin());
                     vtkDebugWithObjectMacro( this->External, "LoadRTPlan: MLCX number of leaf/jaw pairs: " << nofPairs);
                   }
                   else if (deviceType == "MLCY") {
                     distanceY = sourceToMLCDistance;
-			        pairsY = nofPairs;
-			        boundY.resize(leafPositionBoundaries.size());
-			        std::copy( leafPositionBoundaries.begin(), leafPositionBoundaries.end(), boundY.begin());
+                    pairsY = nofPairs;
+                    boundY.resize(leafPositionBoundaries.size());
+                    std::copy( leafPositionBoundaries.begin(), leafPositionBoundaries.end(), boundY.begin());
                     vtkDebugWithObjectMacro( this->External, "LoadRTPlan: MLCY number of leaf/jaw pairs: " << nofPairs);
                   }
-				}
+                }
               }
             }
           }
         } while (rtBeamLimitingDeviceSequence.gotoNextItem().good());
       }
-									
+
       DRTControlPointSequence &rtControlPointSequence = currentBeamSequenceItem.getControlPointSequence();
       if (!rtControlPointSequence.gotoFirstItem().good())
       {
@@ -706,21 +705,21 @@ void vtkSlicerDicomRtReader::vtkInternal::LoadRTPlan(DcmDataset* dataset)
               }
               else if ( !rtBeamLimitingDeviceType.compare("MLCX") || !rtBeamLimitingDeviceType.compare("MLCY") )
               {
-				// Get MLC leaves position (opening)
-				if (getJawPositionsCondition.good()) {
+                // Get MLC leaves position (opening)
+                if (getJawPositionsCondition.good()) {
                   std::vector<double>& positionsX = beamEntry.LeafJawPositionsMLC[0];
                   std::vector<double>& positionsY = beamEntry.LeafJawPositionsMLC[1];
                   if (rtBeamLimitingDeviceType == "MLCX") {
-			        positionsX.resize(leafJawPositions.size());
-			        std::copy( leafJawPositions.begin(), leafJawPositions.end(), positionsX.begin());
+                    positionsX.resize(leafJawPositions.size());
+                    std::copy( leafJawPositions.begin(), leafJawPositions.end(), positionsX.begin());
                     vtkDebugWithObjectMacro( this->External, "LoadRTPlan: MLCX leaf positions have been loaded");
                   }
                   else if (rtBeamLimitingDeviceType == "MLCY") {
-			        positionsY.resize(leafJawPositions.size());
-			        std::copy( leafJawPositions.begin(), leafJawPositions.end(), positionsY.begin());
-			        vtkDebugWithObjectMacro( this->External, "LoadRTPlan: MLCY leaf positions have been loaded");
+                    positionsY.resize(leafJawPositions.size());
+                    std::copy( leafJawPositions.begin(), leafJawPositions.end(), positionsY.begin());
+                    vtkDebugWithObjectMacro( this->External, "LoadRTPlan: MLCY leaf positions have been loaded");
                   }
-			    }
+                }
               }
               else
               {
@@ -953,14 +952,13 @@ void vtkSlicerDicomRtReader::vtkInternal::LoadRTIonPlan(DcmDataset* dataset)
             OFString deviceType("");
             Sint32 nofPairs = -1;
 
-			collimatorItem.getRTBeamLimitingDeviceType(deviceType);
+            collimatorItem.getRTBeamLimitingDeviceType(deviceType);
             if (deviceType == "MLCX" || deviceType == "MLCY") {
               Float32 isocenterToMLCDistance = -1.;
               collimatorItem.getIsocenterToBeamLimitingDeviceDistance(isocenterToMLCDistance);
               
               OFCondition getNumberOfPairsCondition = collimatorItem.getNumberOfLeafJawPairs(nofPairs);
               if (getNumberOfPairsCondition.good()/* && nofPairs > 0 */) {
-				
                 OFVector<vtkTypeFloat64> leafPositionBoundaries;
                 OFCondition getBoundariesCondition = collimatorItem.getLeafPositionBoundaries(leafPositionBoundaries);
                 if (getBoundariesCondition.good()/* && leafPositionBoundaries.size() == (nofPairs + 1)*/) {
@@ -972,19 +970,19 @@ void vtkSlicerDicomRtReader::vtkInternal::LoadRTIonPlan(DcmDataset* dataset)
                   std::vector<double>& boundY = MultiLeafCollimator[1].LeafPositionBoundary;
                   if (deviceType == "MLCX") {
                     distanceX = isocenterToMLCDistance;
-			        pairsX = nofPairs;
-			        boundX.resize(leafPositionBoundaries.size());
-			        std::copy( leafPositionBoundaries.begin(), leafPositionBoundaries.end(), boundX.begin());
-			        vtkDebugWithObjectMacro( this->External, "LoadRTIonPlan: MLCX number of leaf/jaw pairs: " << nofPairs);
+                    pairsX = nofPairs;
+                    boundX.resize(leafPositionBoundaries.size());
+                    std::copy( leafPositionBoundaries.begin(), leafPositionBoundaries.end(), boundX.begin());
+                    vtkDebugWithObjectMacro( this->External, "LoadRTIonPlan: MLCX number of leaf/jaw pairs: " << nofPairs);
                   }
                   else if (deviceType == "MLCY") {
                     distanceY = isocenterToMLCDistance;
-			        pairsY = nofPairs;
-			        boundY.resize(leafPositionBoundaries.size());
-			        std::copy( leafPositionBoundaries.begin(), leafPositionBoundaries.end(), boundY.begin());
-			        vtkDebugWithObjectMacro( this->External, "LoadRTIonPlan: MLCY number of leaf/jaw pairs: " << nofPairs);
+                    pairsY = nofPairs;
+                    boundY.resize(leafPositionBoundaries.size());
+                    std::copy( leafPositionBoundaries.begin(), leafPositionBoundaries.end(), boundY.begin());
+                    vtkDebugWithObjectMacro( this->External, "LoadRTIonPlan: MLCY number of leaf/jaw pairs: " << nofPairs);
                   }
-				}
+                }
               }
             }
           }
@@ -1061,20 +1059,20 @@ void vtkSlicerDicomRtReader::vtkInternal::LoadRTIonPlan(DcmDataset* dataset)
                   }
                   else if (!rtBeamLimitingDeviceType.compare("MLCX") || !rtBeamLimitingDeviceType.compare("MLCY"))
                   {
-				    if (getJawPositionsCondition.good()) {
+                    if (getJawPositionsCondition.good()) {
                       std::vector<double>& positionsX = beamEntry.LeafJawPositionsMLC[0];
                       std::vector<double>& positionsY = beamEntry.LeafJawPositionsMLC[1];
                       if (rtBeamLimitingDeviceType == "MLCX") {
-			            positionsX.resize(leafJawPositions.size());
-			            std::copy( leafJawPositions.begin(), leafJawPositions.end(), positionsX.begin());
-			            vtkDebugWithObjectMacro( this->External, "LoadRTIonPlan: MLCX leaf positions have been loaded");
+                        positionsX.resize(leafJawPositions.size());
+                        std::copy( leafJawPositions.begin(), leafJawPositions.end(), positionsX.begin());
+                        vtkDebugWithObjectMacro( this->External, "LoadRTIonPlan: MLCX leaf positions have been loaded");
                       }
                       else if (rtBeamLimitingDeviceType == "MLCY") {
-			            positionsY.resize(leafJawPositions.size());
-			            std::copy( leafJawPositions.begin(), leafJawPositions.end(), positionsY.begin());
-			            vtkDebugWithObjectMacro( this->External, "LoadRTIonPlan: MLCY leaf positions have been loaded");
+                        positionsY.resize(leafJawPositions.size());
+                        std::copy( leafJawPositions.begin(), leafJawPositions.end(), positionsY.begin());
+                        vtkDebugWithObjectMacro( this->External, "LoadRTIonPlan: MLCY leaf positions have been loaded");
                       }
-			        }
+                    }
                   }
                   else
                   {
@@ -1867,19 +1865,11 @@ bool vtkSlicerDicomRtReader::GetMultiLeafCollimatorX( double& distance, unsigned
   if (pairs && boundaries && (pairs == (boundaries - 1)))
   {
     nofPairs = pairs;
-    pairBoundaries.resize(boundaries);
-    std::copy( this->Internal->MultiLeafCollimator[0].LeafPositionBoundary.begin(),
-      this->Internal->MultiLeafCollimator[0].LeafPositionBoundary.end(),
-      pairBoundaries.begin());
-
+    pairBoundaries = this->Internal->MultiLeafCollimator[0].LeafPositionBoundary;
     return true;
   }
   else
-  {
-    nofPairs = 0;
-    pairBoundaries.clear();
     return false;
-  }
 }
 
 //----------------------------------------------------------------------------
@@ -1888,10 +1878,10 @@ bool vtkSlicerDicomRtReader::GetMultiLeafCollimatorX( double& distance, std::vec
   distance = this->Internal->MultiLeafCollimator[0].Distance;
   unsigned int& pairs = this->Internal->MultiLeafCollimator[0].NumberOfLeafJawPairs;
   size_t boundaries = this->Internal->MultiLeafCollimator[0].LeafPositionBoundary.size();
-  pairBoundaries.clear();
   if (pairs && boundaries && (pairs == (boundaries - 1)))
   {
-	std::vector<double>& boundary = this->Internal->MultiLeafCollimator[0].LeafPositionBoundary;
+    pairBoundaries.clear();
+    std::vector<double>& boundary = this->Internal->MultiLeafCollimator[0].LeafPositionBoundary;
     for ( unsigned int i = 0; i < pairs; ++i)
       pairBoundaries.push_back(std::make_pair( boundary[i], boundary[i + 1]));
     return true;
@@ -1909,19 +1899,11 @@ bool vtkSlicerDicomRtReader::GetMultiLeafCollimatorY( double& distance, unsigned
   if (pairs && boundaries && (pairs == (boundaries - 1)))
   {
     nofPairs = pairs;
-    pairBoundaries.resize(boundaries);
-    std::copy( this->Internal->MultiLeafCollimator[1].LeafPositionBoundary.begin(),
-      this->Internal->MultiLeafCollimator[1].LeafPositionBoundary.end(),
-      pairBoundaries.begin());
-
+    pairBoundaries = this->Internal->MultiLeafCollimator[1].LeafPositionBoundary;
     return true;
   }
   else
-  {
-    nofPairs = 0;
-    pairBoundaries.clear();
     return false;
-  }
 }
 
 //----------------------------------------------------------------------------
@@ -1930,10 +1912,10 @@ bool vtkSlicerDicomRtReader::GetMultiLeafCollimatorY( double& distance, std::vec
   distance = this->Internal->MultiLeafCollimator[1].Distance;
   unsigned int& pairs = this->Internal->MultiLeafCollimator[1].NumberOfLeafJawPairs;
   size_t boundaries = this->Internal->MultiLeafCollimator[1].LeafPositionBoundary.size();
-  pairBoundaries.clear();
   if (pairs && boundaries && (pairs == (boundaries - 1)))
   {
-	std::vector<double>& boundary = this->Internal->MultiLeafCollimator[1].LeafPositionBoundary;
+    pairBoundaries.clear();
+    std::vector<double>& boundary = this->Internal->MultiLeafCollimator[1].LeafPositionBoundary;
     for ( unsigned int i = 0; i < pairs; ++i)
       pairBoundaries.push_back(std::make_pair( boundary[i], boundary[i + 1]));
     return true;
