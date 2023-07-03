@@ -33,6 +33,7 @@
 #include "vtkSlicerIECTransformLogic.h"
 #include "vtkMRMLRTBeamNode.h"
 #include "vtkMRMLRTPlanNode.h"
+#include "qMRMLBeamsTableView.h"
 
 // Slicer includes
 #include <qSlicerApplication.h>
@@ -40,7 +41,6 @@
 #include <qSlicerIOManager.h>
 #include <qSlicerDataDialog.h>
 #include <qSlicerSaveDataDialog.h>
-#include <qMRMLSliceWidget.h>
 #include <qMRMLThreeDWidget.h>
 #include <qMRMLThreeDView.h>
 
@@ -50,10 +50,7 @@
 #include <vtkMRMLDisplayNode.h>
 #include <vtkMRMLModelNode.h>
 #include <vtkMRMLSegmentationNode.h>
-#include <vtkMRMLCameraNode.h>
 #include <vtkMRMLViewNode.h>
-#include <vtkMRMLSliceNode.h>
-#include <vtkMRMLTransformNode.h>
 #include <vtkMRMLSubjectHierarchyNode.h>
 
 // Qt includes
@@ -63,12 +60,6 @@
 
 // CTK includes
 #include <ctkSliderWidget.h>
-
-// VTK includes
-#include <vtkCamera.h>
-#include <vtkPolyData.h>
-#include <vtkMatrix4x4.h>
-#include <vtkTransform.h>
 
 //-----------------------------------------------------------------------------
 /// \ingroup SlicerRt_QtModules_RoomsEyeView
@@ -790,92 +781,10 @@ void qSlicerRoomsEyeViewModuleWidget::onAdditionalModelVerticalDisplacementSlide
 //-----------------------------------------------------------------------------
 void qSlicerRoomsEyeViewModuleWidget::onBeamsEyeViewButtonClicked()
 {
-  //TODO: Move feature to beams module
-
   Q_D(qSlicerRoomsEyeViewModuleWidget);
 
-  // Get 3D view node
-  qSlicerApplication* slicerApplication = qSlicerApplication::application();
-  qSlicerLayoutManager* layoutManager = slicerApplication->layoutManager();
-  qMRMLThreeDView* threeDView = layoutManager->threeDWidget(0)->threeDView();
-  vtkMRMLViewNode* viewNode = threeDView->mrmlViewNode();
-  //vtkCamera* beamsEyeCamera = vtkSmartPointer<vtkCamera>::New();
-
-  // Get camera node for view
-  vtkCollection* cameras = this->mrmlScene()->GetNodesByClass("vtkMRMLCameraNode");
-  vtkMRMLCameraNode* cameraNode = nullptr;
-  for (int i = 0; i < cameras->GetNumberOfItems(); i++)
-  {
-    cameraNode = vtkMRMLCameraNode::SafeDownCast(cameras->GetItemAsObject(i));
-    std::string viewUniqueName = std::string(viewNode->GetNodeTagName()) + cameraNode->GetLayoutName();
-    if (viewUniqueName == viewNode->GetID())
-    {
-      break;
-    }
-  }
-  if (!cameraNode)
-  {
-    qCritical() << Q_FUNC_INFO << "Failed to find camera for view " << (viewNode ? viewNode->GetID() : "(null)");
-    cameras->Delete();
-    return;
-  }
-
   vtkMRMLRTBeamNode* beamNode = vtkMRMLRTBeamNode::SafeDownCast(d->MRMLNodeComboBox_Beam->currentNode());
-  double sourcePosition[3] = {0.0, 0.0, 0.0};
-  double isocenter[3] = {0.0, 0.0, 0.0};
-
-  if (beamNode && beamNode->GetSourcePosition(sourcePosition))
-  {
-    vtkMRMLTransformNode* beamTransformNode = beamNode->GetParentTransformNode();
-    vtkTransform* beamTransform = nullptr;
-    vtkNew<vtkMatrix4x4> mat;
-    mat->Identity();
-
-    if (beamTransformNode)
-    {
-      beamTransform = vtkTransform::SafeDownCast(beamTransformNode->GetTransformToParent());
-      beamTransform->GetMatrix(mat);
-    }
-    else
-    {
-      qCritical() << Q_FUNC_INFO << "Beam transform node is invalid";
-      cameras->Delete();
-      return;
-    }
-
-    double viewUpVector[4] = { -1., 0., 0., 0. }; // beam negative X-axis
-    double vup[4];
-  
-    mat->MultiplyPoint( viewUpVector, vup);
-    //vtkMRMLModelNode* collimatorModel = vtkMRMLModelNode::SafeDownCast(this->mrmlScene()->GetFirstNodeByName("CollimatorModel"));
-    //vtkPolyData* collimatorModelPolyData = collimatorModel->GetPolyData();
-
-    //double collimatorCenterOfRotation[3] = {0.0, 0.0, 0.0};
-    //double collimatorModelBounds[6] = { 0, 0, 0, 0, 0, 0 };
-
-    //collimatorModelPolyData->GetBounds(collimatorModelBounds);
-    //collimatorCenterOfRotation[0] = (collimatorModelBounds[0] + collimatorModelBounds[1]) / 2;
-    //collimatorCenterOfRotation[1] = (collimatorModelBounds[2] + collimatorModelBounds[3]) / 2;
-    //collimatorCenterOfRotation[2] = collimatorModelBounds[4];
-
-    //cameraNode->GetCamera()->SetPosition(collimatorCenterOfRotation);
-    cameraNode->GetCamera()->SetPosition(sourcePosition);
-    if (beamNode->GetPlanIsocenterPosition(isocenter))
-    {
-      cameraNode->GetCamera()->SetFocalPoint(isocenter);
-    }
-    cameraNode->SetViewUp(vup);
-  }
-  
-  cameraNode->GetCamera()->Elevation(-(d->GantryRotationSlider->value()));
-  cameras->Delete();
-
-  //TODO: Oblique slice updating real-time based on beam geometry
-  //vtkMRMLSliceNode* redSliceNode = redSliceWidget->mrmlSliceNode();
-  //redSliceNode->SetSliceVisible(1);
-
-  //TODO: Camera roll also needs to be set to keep the field of view aligned with the beam's field
-  //redSliceNode->SetWidgetNormalLockedToCamera(cameraNode->GetCamera()->GetID);
+  qMRMLBeamsTableView::showBeamsEyeView(beamNode, -(d->GantryRotationSlider->value()));
 }
 
 //-----------------------------------------------------------------------------

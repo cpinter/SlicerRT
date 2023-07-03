@@ -35,6 +35,7 @@
 
 class qMRMLBeamsTableViewPrivate;
 class vtkMRMLNode;
+class vtkMRMLRTBeamNode;
 class QTableWidgetItem;
 class QItemSelection;
 
@@ -94,7 +95,6 @@ public slots:
 
   /// Called when beam is added in an observed plan node
   void onBeamAdded(vtkObject* caller, void* callData);
-
   /// Called when beam is removed in an observed plan node
   void onBeamRemoved(vtkObject* caller, void* callData);
 
@@ -108,6 +108,9 @@ public slots:
   void setVisibilityColumnVisibility(bool on);
   /// Set visibility of the Beam's Eye View column in the beams table
   void setBevColumnVisibility(bool on);
+
+  /// Show beam's eye view for given beam in first 3D view.
+  static void showBeamsEyeView(vtkMRMLRTBeamNode* beamNode, double elevationMm=0.0);
 
 signals:
   /// Emitted if selection changes

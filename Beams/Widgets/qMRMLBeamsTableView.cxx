@@ -26,6 +26,10 @@
 #include "vtkMRMLRTBeamNode.h"
 
 // VTK includes
+#include <vtkCamera.h>
+#include <vtkCollection.h>
+#include <vtkMatrix4x4.h>
+#include <vtkTransform.h>
 #include <vtkWeakPointer.h>
 
 // Qt includes
@@ -34,8 +38,18 @@
 #include <QStringList>
 #include <QPushButton>
 
-// SlicerQt includes
+// Slicer includes
 #include "qSlicerApplication.h"
+#include <qSlicerLayoutManager.h>
+#include <qMRMLSliceWidget.h>
+#include <qMRMLThreeDWidget.h>
+#include <qMRMLThreeDView.h>
+
+// MRML includes
+#include <vtkMRMLCameraNode.h>
+#include <vtkMRMLViewNode.h>
+#include <vtkMRMLSliceNode.h>
+#include <vtkMRMLTransformNode.h>
 
 #define ID_PROPERTY "ID"
 
@@ -188,6 +202,7 @@ void qMRMLBeamsTableView::setPlanNode(vtkMRMLNode* node)
     {
       vtkMRMLRTBeamNode* beamNode = (*beamIt);
       qvtkConnect( beamNode, vtkCommand::ModifiedEvent, this, SLOT( updateBeamTable() ) );
+      qvtkConnect( beamNode, vtkMRMLDisplayableNode::DisplayModifiedEvent, this, SLOT( updateBeamTable() ) );
     }
   }
 
@@ -231,7 +246,7 @@ void qMRMLBeamsTableView::updateBeamTable()
     return;
   }
 
-  // Get beams
+  // For each beam in current plan
   std::vector<vtkMRMLRTBeamNode*> beams;
   d->PlanNode->GetBeams(beams);
   d->BeamsTable->setRowCount(beams.size());
@@ -285,7 +300,14 @@ void qMRMLBeamsTableView::updateBeamTable()
 
     // Visibility button
     QPushButton* visibilityButton = new QPushButton();
-    visibilityButton->setIcon(QIcon(":/Icons/Small/SlicerVisibleInvisible.png"));
+    if (beamNode->GetDisplayVisibility())
+    {
+      visibilityButton->setIcon(QIcon(":/Icons/Small/SlicerVisible.png"));
+    }
+    else
+    {
+      visibilityButton->setIcon(QIcon(":/Icons/Small/SlicerInvisible.png"));
+    }
     visibilityButton->setMaximumWidth(52);
     visibilityButton->setToolTip("Toggle visibility for this beam");
     visibilityButton->setProperty(ID_PROPERTY, beamNode->GetID());
@@ -458,8 +480,7 @@ void qMRMLBeamsTableView::onBevButtonClicked()
     d->PlanNode->GetScene()->GetNodeByID(beamNodeID.toUtf8().constData()) );
 
   // Switch camera to beam's eye view
-qCritical() << "Beam's Eye View clicked for beam " << beamNode->GetName();
-  //TODO:
+  qMRMLBeamsTableView::showBeamsEyeView(beamNode);
 }
 
 //-----------------------------------------------------------------------------
@@ -528,6 +549,7 @@ void qMRMLBeamsTableView::onBeamAdded(vtkObject* caller, void* callData)
   {
     vtkMRMLNode* beamNode = d->PlanNode->GetScene()->GetNodeByID(beamNodeId);
     qvtkConnect( beamNode, vtkCommand::ModifiedEvent, this, SLOT( updateBeamTable() ) );
+    qvtkConnect( beamNode, vtkMRMLDisplayableNode::DisplayModifiedEvent, this, SLOT( updateBeamTable() ) );
   }
 }
 
@@ -547,6 +569,7 @@ void qMRMLBeamsTableView::onBeamRemoved(vtkObject* caller, void* callData)
   {
     vtkMRMLNode* beamNode = d->PlanNode->GetScene()->GetNodeByID(beamNodeId);
     qvtkDisconnect( beamNode, vtkCommand::ModifiedEvent, this, SLOT( updateBeamTable() ) );
+    qvtkDisconnect( beamNode, vtkMRMLDisplayableNode::DisplayModifiedEvent, this, SLOT( updateBeamTable() ) );
   }
 }
 
@@ -618,4 +641,95 @@ void qMRMLBeamsTableView::setBevColumnVisibility(bool on)
 {
   Q_D(qMRMLBeamsTableView);
   d->BeamsTable->setColumnHidden(d->columnIndex("BeamsEyeView"), !on);
+}
+
+//------------------------------------------------------------------------------
+void qMRMLBeamsTableView::showBeamsEyeView(vtkMRMLRTBeamNode* beamNode, double elevationMm/*=0.0*/)
+{
+  if (!beamNode)
+  {
+    return;
+  }
+
+  // Get 3D view node
+  qSlicerApplication* slicerApplication = qSlicerApplication::application();
+  qSlicerLayoutManager* layoutManager = slicerApplication->layoutManager();
+  qMRMLThreeDView* threeDView = layoutManager->threeDWidget(0)->threeDView();
+  vtkMRMLViewNode* viewNode = threeDView->mrmlViewNode();
+  //vtkCamera* beamsEyeCamera = vtkSmartPointer<vtkCamera>::New();
+
+  // Get camera node for view
+  vtkCollection* cameras = viewNode->GetScene()->GetNodesByClass("vtkMRMLCameraNode");
+  vtkMRMLCameraNode* cameraNode = nullptr;
+  for (int i = 0; i < cameras->GetNumberOfItems(); i++)
+  {
+    cameraNode = vtkMRMLCameraNode::SafeDownCast(cameras->GetItemAsObject(i));
+    std::string viewUniqueName = std::string(viewNode->GetNodeTagName()) + cameraNode->GetLayoutName();
+    if (viewUniqueName == viewNode->GetID())
+    {
+      break;
+    }
+  }
+  if (!cameraNode)
+  {
+    qCritical() << Q_FUNC_INFO << "Failed to find camera for view " << (viewNode ? viewNode->GetID() : "(null)");
+    cameras->Delete();
+    return;
+  }
+
+  double sourcePosition[3] = {0.0, 0.0, 0.0};
+  double isocenter[3] = {0.0, 0.0, 0.0};
+
+  if (beamNode && beamNode->GetSourcePosition(sourcePosition))
+  {
+    vtkMRMLTransformNode* beamTransformNode = beamNode->GetParentTransformNode();
+    vtkTransform* beamTransform = nullptr;
+    vtkNew<vtkMatrix4x4> mat;
+    mat->Identity();
+
+    if (beamTransformNode)
+    {
+      beamTransform = vtkTransform::SafeDownCast(beamTransformNode->GetTransformToParent());
+      beamTransform->GetMatrix(mat);
+    }
+    else
+    {
+      qCritical() << Q_FUNC_INFO << "Beam transform node is invalid";
+      cameras->Delete();
+      return;
+    }
+
+    double viewUpVector[4] = { -1., 0., 0., 0. }; // beam negative X-axis
+    double vup[4] = {0.0};
+  
+    mat->MultiplyPoint( viewUpVector, vup);
+    //vtkMRMLModelNode* collimatorModel = vtkMRMLModelNode::SafeDownCast(this->mrmlScene()->GetFirstNodeByName("CollimatorModel"));
+    //vtkPolyData* collimatorModelPolyData = collimatorModel->GetPolyData();
+
+    //double collimatorCenterOfRotation[3] = {0.0, 0.0, 0.0};
+    //double collimatorModelBounds[6] = { 0, 0, 0, 0, 0, 0 };
+
+    //collimatorModelPolyData->GetBounds(collimatorModelBounds);
+    //collimatorCenterOfRotation[0] = (collimatorModelBounds[0] + collimatorModelBounds[1]) / 2;
+    //collimatorCenterOfRotation[1] = (collimatorModelBounds[2] + collimatorModelBounds[3]) / 2;
+    //collimatorCenterOfRotation[2] = collimatorModelBounds[4];
+
+    //cameraNode->GetCamera()->SetPosition(collimatorCenterOfRotation);
+    cameraNode->GetCamera()->SetPosition(sourcePosition);
+    if (beamNode->GetPlanIsocenterPosition(isocenter))
+    {
+      cameraNode->GetCamera()->SetFocalPoint(isocenter);
+    }
+    cameraNode->SetViewUp(vup);
+  }
+  
+  cameraNode->GetCamera()->Elevation(elevationMm);
+  cameras->Delete();
+
+  //TODO: Oblique slice updating real-time based on beam geometry
+  //vtkMRMLSliceNode* redSliceNode = redSliceWidget->mrmlSliceNode();
+  //redSliceNode->SetSliceVisible(1);
+
+  //TODO: Camera roll also needs to be set to keep the field of view aligned with the beam's field
+  //redSliceNode->SetWidgetNormalLockedToCamera(cameraNode->GetCamera()->GetID);}
 }
