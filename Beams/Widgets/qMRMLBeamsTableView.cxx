@@ -202,7 +202,7 @@ void qMRMLBeamsTableView::setPlanNode(vtkMRMLNode* node)
     {
       vtkMRMLRTBeamNode* beamNode = (*beamIt);
       qvtkConnect( beamNode, vtkCommand::ModifiedEvent, this, SLOT( updateBeamTable() ) );
-      qvtkConnect( beamNode, vtkMRMLDisplayableNode::DisplayModifiedEvent, this, SLOT( updateBeamTable() ) );
+      qvtkConnect( beamNode, vtkMRMLDisplayableNode::DisplayModifiedEvent, this, SLOT( updateVisibilityForBeam(vtkObject*) ) );
     }
   }
 
@@ -326,6 +326,50 @@ void qMRMLBeamsTableView::updateBeamTable()
 
   // Unblock signals
   d->BeamsTable->blockSignals(false);
+}
+
+//-----------------------------------------------------------------------------
+void qMRMLBeamsTableView::updateVisibilityForBeam(vtkObject* caller)
+{
+  vtkMRMLRTBeamNode* beamNode = vtkMRMLRTBeamNode::SafeDownCast(caller);
+  if (beamNode == nullptr)
+  {
+    return;
+  }
+
+  Q_D(qMRMLBeamsTableView);
+
+  // Block signals so that onBeamTableItemChanged function is not called when populating
+  bool wasBlocked = d->BeamsTable->blockSignals(true);
+
+  for (int row=0; row < d->BeamsTable->rowCount(); ++row)
+  {
+    QTableWidgetItem* numberItem = d->BeamsTable->item(row, d->columnIndex("Number"));
+    QString beamNodeID = numberItem->data(IDRole).toString();
+    if (beamNodeID.compare(beamNode->GetID()))
+    {
+      continue; // Not the caller beam, skip
+    }
+
+    QPushButton* visibilityButton = new QPushButton();
+    if (beamNode->GetDisplayVisibility())
+    {
+      visibilityButton->setIcon(QIcon(":/Icons/Small/SlicerVisible.png"));
+    }
+    else
+    {
+      visibilityButton->setIcon(QIcon(":/Icons/Small/SlicerInvisible.png"));
+    }
+    visibilityButton->setMaximumWidth(52);
+    visibilityButton->setToolTip("Toggle visibility for this beam");
+    visibilityButton->setProperty(ID_PROPERTY, beamNode->GetID());
+    connect(visibilityButton, SIGNAL(clicked()), this, SLOT(onVisibilityButtonClicked()));
+    d->BeamsTable->setCellWidget(row, d->columnIndex("Visibility"), visibilityButton);
+    break;
+  }
+
+  // Unblock signals
+  d->BeamsTable->blockSignals(wasBlocked);
 }
 
 //-----------------------------------------------------------------------------
@@ -549,7 +593,7 @@ void qMRMLBeamsTableView::onBeamAdded(vtkObject* caller, void* callData)
   {
     vtkMRMLNode* beamNode = d->PlanNode->GetScene()->GetNodeByID(beamNodeId);
     qvtkConnect( beamNode, vtkCommand::ModifiedEvent, this, SLOT( updateBeamTable() ) );
-    qvtkConnect( beamNode, vtkMRMLDisplayableNode::DisplayModifiedEvent, this, SLOT( updateBeamTable() ) );
+    qvtkConnect( beamNode, vtkMRMLDisplayableNode::DisplayModifiedEvent, this, SLOT( updateVisibilityForBeam(vtkObject*) ) );
   }
 }
 
@@ -569,7 +613,7 @@ void qMRMLBeamsTableView::onBeamRemoved(vtkObject* caller, void* callData)
   {
     vtkMRMLNode* beamNode = d->PlanNode->GetScene()->GetNodeByID(beamNodeId);
     qvtkDisconnect( beamNode, vtkCommand::ModifiedEvent, this, SLOT( updateBeamTable() ) );
-    qvtkDisconnect( beamNode, vtkMRMLDisplayableNode::DisplayModifiedEvent, this, SLOT( updateBeamTable() ) );
+    qvtkDisconnect( beamNode, vtkMRMLDisplayableNode::DisplayModifiedEvent, this, SLOT( updateVisibilityForBeam(vtkObject*) ) );
   }
 }
 

@@ -135,6 +135,9 @@ protected slots:
   /// Update beam table according to the plan node.
   void updateBeamTable();
 
+  /// Update visibility icon for given beam
+  void updateVisibilityForBeam(vtkObject* caller);
+
   /// To prevent accidentally moving out of the widget when pressing up/down arrows.
   bool eventFilter(QObject* target, QEvent* event) override;
 
