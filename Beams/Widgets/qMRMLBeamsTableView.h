@@ -44,6 +44,17 @@ class Q_SLICER_MODULE_BEAMS_WIDGETS_EXPORT qMRMLBeamsTableView : public qMRMLWid
   Q_OBJECT
   QVTK_OBJECT
 
+  /// Weight column visibility property.
+  Q_PROPERTY(bool weightColumnVisibility READ weightColumnVisibility WRITE setWeightColumnVisibility)
+  /// Edit column visibility property.
+  Q_PROPERTY(bool editColumnVisibility READ editColumnVisibility WRITE setEditColumnVisibility)
+  /// Clone column visibility property.
+  Q_PROPERTY(bool cloneColumnVisibility READ cloneColumnVisibility WRITE setCloneColumnVisibility)
+  /// Visibility column visibility property.
+  Q_PROPERTY(bool visibilityColumnVisibility READ visibilityColumnVisibility WRITE setVisibilityColumnVisibility)
+  /// Beam's Eye View column visibility property.
+  Q_PROPERTY(bool bevColumnVisibility READ bevColumnVisibility WRITE setBevColumnVisibility)
+
   enum BeamTableItemDataRole
   {
     /// Unique ID of the item. For nodes, it is the node ID.
@@ -66,15 +77,37 @@ public:
   /// Return selected beam node ID
   Q_INVOKABLE QStringList selectedBeamNodeIDs();
 
+  /// Get visibility of the weight column in the beams table
+  Q_INVOKABLE bool weightColumnVisibility()const;
+  /// Get visibility of the edit column in the beams table
+  Q_INVOKABLE bool editColumnVisibility()const;
+  /// Get visibility of the clone column in the beams table
+  Q_INVOKABLE bool cloneColumnVisibility()const;
+  /// Get visibility of the visibility column in the beams table
+  Q_INVOKABLE bool visibilityColumnVisibility()const;
+  /// Get visibility of the Beam's Eye View column in the beams table
+  Q_INVOKABLE bool bevColumnVisibility()const;
+
 public slots:
   /// Set plan MRML node
-  Q_INVOKABLE void setPlanNode(vtkMRMLNode* node);
+  void setPlanNode(vtkMRMLNode* node);
 
   /// Called when beam is added in an observed plan node
   void onBeamAdded(vtkObject* caller, void* callData);
 
   /// Called when beam is removed in an observed plan node
   void onBeamRemoved(vtkObject* caller, void* callData);
+
+  /// Set visibility of the weight column in the beams table
+  void setWeightColumnVisibility(bool on);
+  /// Set visibility of the edit column in the beams table
+  void setEditColumnVisibility(bool on);
+  /// Set visibility of the clone column in the beams table
+  void setCloneColumnVisibility(bool on);
+  /// Set visibility of the visibility column in the beams table
+  void setVisibilityColumnVisibility(bool on);
+  /// Set visibility of the Beam's Eye View column in the beams table
+  void setBevColumnVisibility(bool on);
 
 signals:
   /// Emitted if selection changes
@@ -84,16 +117,22 @@ protected slots:
   /// Handle changing of values in a cell
   void onBeamTableItemChanged(QTableWidgetItem* changedItem);
 
-  /// Handle edit button click. Switches to Beams module and selects beam
+  /// Handle edit button click. Switches to Beams module and selects beam.
   void onEditButtonClicked();
 
-  /// Handle clone button click. Creates clone of the beam for which the button was clicked
+  /// Handle clone button click. Creates clone of the beam for which the button was clicked.
   void onCloneButtonClicked();
 
-  /// Update beam table according to the plan node
+  /// Handle visibility button click. Toggles beam visibility.
+  void onVisibilityButtonClicked();
+
+  /// Handle Beam's Eye View button click. Sets camera to show Beam's Eye View of the beam of the row.
+  void onBevButtonClicked();
+
+  /// Update beam table according to the plan node.
   void updateBeamTable();
 
-  /// To prevent accidentally moving out of the widget when pressing up/down arrows
+  /// To prevent accidentally moving out of the widget when pressing up/down arrows.
   bool eventFilter(QObject* target, QEvent* event) override;
 
 protected:

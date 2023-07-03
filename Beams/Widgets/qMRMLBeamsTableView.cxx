@@ -54,7 +54,7 @@ public:
   void setMessage(const QString& message);
 
   /// Return the column index for a given string, -1 if not a valid header
-  int columnIndex(QString label);
+  int columnIndex(QString label)const;
 
   /// Find name item of row corresponding to a beam node ID
   QTableWidgetItem* findItemByBeamNodeID(QString beamNodeID);
@@ -83,9 +83,9 @@ void qMRMLBeamsTableViewPrivate::init()
   this->setMessage(QString());
 
   // Set table header properties
-  this->ColumnLabels << "Number" << "Name" << "Gantry" << "Weight" << "Edit" << "Clone";
+  this->ColumnLabels << "Number" << "Name" << "Gantry" << "Weight" << "Edit" << "Clone" << "Visibility" << "BeamsEyeView";
   this->BeamsTable->setHorizontalHeaderLabels(
-    QStringList() << "#" << "Name" << "Gantry" << "Weight" << "" );
+    QStringList() << "#" << "Name" << "Gantry" << "Weight" << "" << "" << "" << "BEV");
   this->BeamsTable->setColumnCount(this->ColumnLabels.size());
 
 #if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
@@ -93,7 +93,7 @@ void qMRMLBeamsTableViewPrivate::init()
 #else
   this->BeamsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 #endif
-  this->BeamsTable->horizontalHeader()->setStretchLastSection(1);
+  //this->BeamsTable->horizontalHeader()->setStretchLastSection(1);
 
   // Select rows
   this->BeamsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -108,7 +108,7 @@ void qMRMLBeamsTableViewPrivate::init()
 }
 
 //-----------------------------------------------------------------------------
-int qMRMLBeamsTableViewPrivate::columnIndex(QString label)
+int qMRMLBeamsTableViewPrivate::columnIndex(QString label)const
 {
   if (!this->ColumnLabels.contains(label))
     {
@@ -282,6 +282,24 @@ void qMRMLBeamsTableView::updateBeamTable()
     cloneButton->setProperty(ID_PROPERTY, beamNode->GetID());
     connect(cloneButton, SIGNAL(clicked()), this, SLOT(onCloneButtonClicked()));
     d->BeamsTable->setCellWidget(row, d->columnIndex("Clone"), cloneButton);
+
+    // Visibility button
+    QPushButton* visibilityButton = new QPushButton();
+    visibilityButton->setIcon(QIcon(":/Icons/Small/SlicerVisibleInvisible.png"));
+    visibilityButton->setMaximumWidth(52);
+    visibilityButton->setToolTip("Toggle visibility for this beam");
+    visibilityButton->setProperty(ID_PROPERTY, beamNode->GetID());
+    connect(visibilityButton, SIGNAL(clicked()), this, SLOT(onVisibilityButtonClicked()));
+    d->BeamsTable->setCellWidget(row, d->columnIndex("Visibility"), visibilityButton);
+
+    // Beam's Eye View button
+    QPushButton* bevButton = new QPushButton();
+    bevButton->setIcon(QIcon(":/Icons/ViewCenter.png"));
+    bevButton->setMaximumWidth(52);
+    bevButton->setToolTip("Show beam's eye view for this beam");
+    bevButton->setProperty(ID_PROPERTY, beamNode->GetID());
+    connect(bevButton, SIGNAL(clicked()), this, SLOT(onBevButtonClicked()));
+    d->BeamsTable->setCellWidget(row, d->columnIndex("BeamsEyeView"), bevButton);
 }
 
   // Unblock signals
@@ -405,6 +423,45 @@ void qMRMLBeamsTableView::onCloneButtonClicked()
   beamNode->RequestCloning();
 }
 
+//------------------------------------------------------------------------------
+void qMRMLBeamsTableView::onVisibilityButtonClicked()
+{
+  Q_D(qMRMLBeamsTableView);
+  QPushButton* senderButton = qobject_cast<QPushButton*>(sender());
+  if (!senderButton || !d->PlanNode || !d->PlanNode->GetScene())
+    {
+    return;
+    }
+
+  // Get beam node from scene
+  QString beamNodeID = senderButton->property(ID_PROPERTY).toString();
+  vtkMRMLRTBeamNode* beamNode = vtkMRMLRTBeamNode::SafeDownCast(
+    d->PlanNode->GetScene()->GetNodeByID(beamNodeID.toUtf8().constData()) );
+
+  // Toggle beam visibility
+  beamNode->SetDisplayVisibility(beamNode->GetDisplayVisibility() > 0 ? 0 : 1);
+}
+
+//------------------------------------------------------------------------------
+void qMRMLBeamsTableView::onBevButtonClicked()
+{
+  Q_D(qMRMLBeamsTableView);
+  QPushButton* senderButton = qobject_cast<QPushButton*>(sender());
+  if (!senderButton || !d->PlanNode || !d->PlanNode->GetScene())
+    {
+    return;
+    }
+
+  // Get beam node from scene
+  QString beamNodeID = senderButton->property(ID_PROPERTY).toString();
+  vtkMRMLRTBeamNode* beamNode = vtkMRMLRTBeamNode::SafeDownCast(
+    d->PlanNode->GetScene()->GetNodeByID(beamNodeID.toUtf8().constData()) );
+
+  // Switch camera to beam's eye view
+qCritical() << "Beam's Eye View clicked for beam " << beamNode->GetName();
+  //TODO:
+}
+
 //-----------------------------------------------------------------------------
 QStringList qMRMLBeamsTableView::selectedBeamNodeIDs()
 {
@@ -491,4 +548,74 @@ void qMRMLBeamsTableView::onBeamRemoved(vtkObject* caller, void* callData)
     vtkMRMLNode* beamNode = d->PlanNode->GetScene()->GetNodeByID(beamNodeId);
     qvtkDisconnect( beamNode, vtkCommand::ModifiedEvent, this, SLOT( updateBeamTable() ) );
   }
+}
+
+//------------------------------------------------------------------------------
+bool qMRMLBeamsTableView::weightColumnVisibility()const
+{
+  Q_D(const qMRMLBeamsTableView);
+  return !d->BeamsTable->isColumnHidden(d->columnIndex("Weight"));
+}
+
+//------------------------------------------------------------------------------
+void qMRMLBeamsTableView::setWeightColumnVisibility(bool on)
+{
+  Q_D(qMRMLBeamsTableView);
+  d->BeamsTable->setColumnHidden(d->columnIndex("Weight"), !on);
+}
+
+//------------------------------------------------------------------------------
+bool qMRMLBeamsTableView::editColumnVisibility()const
+{
+  Q_D(const qMRMLBeamsTableView);
+  return !d->BeamsTable->isColumnHidden(d->columnIndex("Edit"));
+}
+
+//------------------------------------------------------------------------------
+void qMRMLBeamsTableView::setEditColumnVisibility(bool on)
+{
+  Q_D(qMRMLBeamsTableView);
+  d->BeamsTable->setColumnHidden(d->columnIndex("Edit"), !on);
+}
+
+//------------------------------------------------------------------------------
+bool qMRMLBeamsTableView::cloneColumnVisibility()const
+{
+  Q_D(const qMRMLBeamsTableView);
+  return !d->BeamsTable->isColumnHidden(d->columnIndex("Clone"));
+}
+
+//------------------------------------------------------------------------------
+void qMRMLBeamsTableView::setCloneColumnVisibility(bool on)
+{
+  Q_D(qMRMLBeamsTableView);
+  d->BeamsTable->setColumnHidden(d->columnIndex("Clone"), !on);
+}
+
+//------------------------------------------------------------------------------
+bool qMRMLBeamsTableView::visibilityColumnVisibility()const
+{
+  Q_D(const qMRMLBeamsTableView);
+  return !d->BeamsTable->isColumnHidden(d->columnIndex("Visibility"));
+}
+
+//------------------------------------------------------------------------------
+void qMRMLBeamsTableView::setVisibilityColumnVisibility(bool on)
+{
+  Q_D(qMRMLBeamsTableView);
+  d->BeamsTable->setColumnHidden(d->columnIndex("Visibility"), !on);
+}
+
+//------------------------------------------------------------------------------
+bool qMRMLBeamsTableView::bevColumnVisibility()const
+{
+  Q_D(const qMRMLBeamsTableView);
+  return !d->BeamsTable->isColumnHidden(d->columnIndex("BeamsEyeView"));
+}
+
+//------------------------------------------------------------------------------
+void qMRMLBeamsTableView::setBevColumnVisibility(bool on)
+{
+  Q_D(qMRMLBeamsTableView);
+  d->BeamsTable->setColumnHidden(d->columnIndex("BeamsEyeView"), !on);
 }
