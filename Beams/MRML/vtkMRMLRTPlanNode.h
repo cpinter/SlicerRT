@@ -31,6 +31,7 @@
 
 // SegmentationCore includes
 #include "vtkOrientedImageData.h"
+#include <vtkSmartPointer.h>
 
 class vtkCollection;
 class vtkMRMLMarkupsFiducialNode;
@@ -62,7 +63,9 @@ public:
     /// Fired if beam is removed
     BeamRemoved,
     /// Fired if dose engine is changed
-    DoseEngineChanged
+    DoseEngineChanged,
+    /// Fired if optimization engine is changed
+    PlanOptimizerChanged
   };
 
 public:
@@ -193,13 +196,26 @@ public:
   /// Set dose engine name (and invoke setting the default beam parameters for the new engine)
   void SetDoseEngineName(const char* engineName);
 
+  // Get optimization engine name
+  vtkGetStringMacro(PlanOptimizerName);
+  /// Set optimization engine name
+  void SetPlanOptimizerName(const char* optimizerName);
+
   /// Get prescription dose
   vtkGetMacro(RxDose, double);
   /// Set prescription dose
   vtkSetMacro(RxDose, double);
 
-  vtkSetVector3Macro(DoseGrid, double);
-  vtkGetVector3Macro(DoseGrid, double);
+  /// Get dose grid spacing
+  vtkGetVector3Macro(DoseGridSpacing, double);
+  /// Set dose grid spacing
+  vtkSetVector3Macro(DoseGridSpacing, double);
+
+  /// Set dose grid in one coordinate
+  void SetDoseGridSpacingComponent(int index, double value);
+
+  /// Set dose grid to ct grid
+  void SetDoseGridSpacingToCTGridSpacing();
 
   /// Get flag for ion plan
   vtkGetMacro( IonPlanFlag, bool);
@@ -241,9 +257,11 @@ protected:
   /// Name of the selected dose engine
   char* DoseEngineName{ nullptr };
 
-  ///TODO: Allow user to specify dose volume resolution different from reference volume
-  /// (currently output dose volume has the same spacing as the reference anatomy)
-  double DoseGrid[3]{ 0, 0, 0 };
+  /// Name of the selected optimization engine
+  char* PlanOptimizerName;
+
+  /// Allows user to specify dose volume resolution different from reference volume
+  double DoseGridSpacing[3]{ 5.0,5.0,5.0 };
 
   /// Flag, indicates that a plan node is an ion plan node
   bool IonPlanFlag{ false };
