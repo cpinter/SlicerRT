@@ -13,11 +13,18 @@ set(${KIT}_SRCS
   qMRMLBeamParametersTabWidget.h
   qMRMLBeamsTableView.cxx
   qMRMLBeamsTableView.h
+  qMRMLRtInversePlanningSegmentsTableView.cxx
+  qMRMLRtInversePlanningSegmentsTableView.h
+  qMRMLRtInversePlanningSegmentsModel.cxx
+  qMRMLRtInversePlanningSegmentsModel.h
+  qMRMLRtInversePlanningSegmentsModel_p.h
   )
 
 set(${KIT}_MOC_SRCS
   qMRMLBeamParametersTabWidget.h
   qMRMLBeamsTableView.h
+  qMRMLRtInversePlanningSegmentsTableView.h
+  qMRMLRtInversePlanningSegmentsModel.h
 )
 
 set(${KIT}_UI_SRCS
