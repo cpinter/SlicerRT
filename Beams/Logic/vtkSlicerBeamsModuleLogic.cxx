@@ -360,6 +360,7 @@ void vtkSlicerBeamsModuleLogic::UpdateBeamTransform(vtkMRMLRTBeamNode* beamNode,
   // Set transform to beam node
   beamTransformNode->SetAndObserveTransformToParent(beamLinearTransform);
 }
+
 //-----------------------------------------------------------------------------
 vtkMRMLLinearTransformNode* vtkSlicerBeamsModuleLogic::GetTransformNodeBetween(
   vtkSlicerIECTransformLogic::CoordinateSystemIdentifier fromFrame, vtkSlicerIECTransformLogic::CoordinateSystemIdentifier toFrame)
@@ -371,8 +372,9 @@ vtkMRMLLinearTransformNode* vtkSlicerBeamsModuleLogic::GetTransformNodeBetween(
   }
 
   return vtkMRMLLinearTransformNode::SafeDownCast(
-    this->GetMRMLScene()->GetFirstNodeByName(this->IecLogic->GetTransformNameBetween(fromFrame, toFrame).c_str()));
+    this->GetMRMLScene()->GetFirstNodeByName(this->IECLogic->GetTransformNameBetween(fromFrame, toFrame).c_str()));
 }
+
 //-----------------------------------------------------------------------------
 void vtkSlicerBeamsModuleLogic::UpdateIECTransformsFromBeam(vtkMRMLRTBeamNode* beamNode, double* isocenter)
 {
@@ -391,12 +393,12 @@ void vtkSlicerBeamsModuleLogic::UpdateIECTransformsFromBeam(vtkMRMLRTBeamNode* b
     }
   }
 
-  // Make sure the transform hierarchy is set up
-  this->IecLogic->BuildIECTransformHierarchy();
+  //// Make sure the transform hierarchy is set up
+  //this->IECLogic->BuildIECTransformHierarchy();
 
-  this->IecLogic->UpdateGantryToFixedReferenceTransform(beamNode->GetGantryAngle());
-  this->IecLogic->UpdateCollimatorToGantryTransform(beamNode->GetCollimatorAngle());
-  this->IecLogic->UpdatePatientSupportRotationToFixedReferenceTransform(beamNode->GetCouchAngle());
+  this->IECLogic->UpdateGantryToFixedReferenceTransform(beamNode->GetGantryAngle());
+  this->IECLogic->UpdateCollimatorToGantryTransform(beamNode->GetCollimatorAngle());
+  this->IECLogic->UpdatePatientSupportRotationToFixedReferenceTransform(beamNode->GetCouchAngle());
 
   // Update IEC Patient to RAS transform based on the isocenter defined in the beam's parent plan
   vtkMRMLLinearTransformNode* rasToPatientReferenceTransformNode =

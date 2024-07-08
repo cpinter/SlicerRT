@@ -1657,7 +1657,7 @@ vtkMRMLLinearTransformNode* vtkSlicerDrrImageComputationLogic::UpdateImageTransf
   vtkNew<vtkSlicerIECTransformLogic> iecLogic;
 
   // Update transforms in IEC logic from beam node parameters
-  BeamsLogic->UpdateIECTransformsFromBeam(beamNode);
+  this->BeamsLogic->UpdateIECTransformsFromBeam(beamNode);
   // (a BUG?) For RT Image correct orientation PatientSupport -> Fixed Reference MUST have a negative sign
   iecLogic->UpdatePatientSupportRotationToFixedReferenceTransform(-1. * beamNode->GetCouchAngle());
 
@@ -1666,7 +1666,7 @@ vtkMRMLLinearTransformNode* vtkSlicerDrrImageComputationLogic::UpdateImageTransf
   // Gantry -> FixedReference -> PatientSupport -> TableTopEccentricRotation -> TableTop -> Patient -> RAS
   using IEC = vtkSlicerIECTransformLogic::CoordinateSystemIdentifier;
   vtkNew<vtkGeneralTransform> generalTransform;
-  if (REVLogic->GetTransformNodeBetween( IEC::Gantry, IEC::RAS, generalTransform))
+  if (iecLogic->GetTransformBetween( IEC::Gantry, IEC::RAS, generalTransform))
   {
     // Convert general transform to linear
     // This call also makes hard copy of the transform so that it doesn't change when other beam transforms change
@@ -1700,7 +1700,7 @@ bool vtkSlicerDrrImageComputationLogic::GetRtImageTransformMatrixFromBeam(vtkMRM
   vtkNew<vtkSlicerIECTransformLogic> iecLogic;
 
   // Update transforms in IEC logic from beam node parameters
-  BeamsLogic->UpdateIECTransformsFromBeam(beamNode);
+  this->BeamsLogic->UpdateIECTransformsFromBeam(beamNode);
   // (a BUG?) For RT Image correct orientation PatientSupport -> Fixed Reference MUST have a negative sign
   iecLogic->UpdatePatientSupportRotationToFixedReferenceTransform(-1. * beamNode->GetCouchAngle());
 
@@ -1709,7 +1709,7 @@ bool vtkSlicerDrrImageComputationLogic::GetRtImageTransformMatrixFromBeam(vtkMRM
   // Gantry -> FixedReference -> PatientSupport -> TableTopEccentricRotation -> TableTop -> Patient -> RAS
   using IEC = vtkSlicerIECTransformLogic::CoordinateSystemIdentifier;
   vtkNew<vtkGeneralTransform> generalTransform;
-  if (REVLogic->GetTransformNodeBetween( IEC::Gantry, IEC::RAS, generalTransform))
+  if (iecLogic->GetTransformBetween(IEC::Gantry, IEC::RAS, generalTransform))
   {
     // Convert general transform to linear
     // This call also makes hard copy of the transform so that it doesn't change when other beam transforms change

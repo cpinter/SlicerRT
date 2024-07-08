@@ -107,7 +107,7 @@ private:
   vtkSlicerMLCPositionLogic* MLCPositionLogic;
 
 private:
-  vtkSmartPointer<vtkSlicerIECTransformLogic> IecLogic = vtkSmartPointer<vtkSlicerIECTransformLogic>::New();
+  vtkNew<vtkSlicerIECTransformLogic> IECLogic;
 };
 
 #endif
