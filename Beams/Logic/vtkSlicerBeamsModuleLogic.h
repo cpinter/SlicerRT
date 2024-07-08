@@ -79,8 +79,8 @@ public:
     vtkSlicerIECTransformLogic::CoordinateSystemIdentifier fromFrame, vtkSlicerIECTransformLogic::CoordinateSystemIdentifier toFrame);
 
 public:
-  /// Update IEC transforms according to beam node
-  void UpdateIECTransformsFromBeam(vtkMRMLRTBeamNode* beamNode, double* isocenter = nullptr);
+  ///// Update IEC transforms according to beam node
+  //void UpdateIECTransformsFromBeam(vtkMRMLRTBeamNode* beamNode, double* isocenter = nullptr);
 
   /// Update fixed reference to RAS transform based on isocenter and patient support transforms
   void UpdateFixedReferenceToRASTransform(vtkMRMLRTPlanNode* planNode = nullptr, double* isocenter = nullptr);
