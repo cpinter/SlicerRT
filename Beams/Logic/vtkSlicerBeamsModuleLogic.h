@@ -75,6 +75,9 @@ public:
   /// \warning This method is used only in vtkSlicerBeamsModuleLogic::UpdateTransformForBeam
   void UpdateBeamTransform(vtkMRMLRTBeamNode* beamNode, vtkMRMLLinearTransformNode* beamTransformNode, double* isocenter = nullptr);
 
+  /// Update IEC transforms according to beam node. Function kept separate from \sa UpdateBeamTransform for usage in the DRR module
+  void UpdateIECTransformsFromBeam(vtkMRMLRTBeamNode* beamNode, double* isocenter=nullptr);
+
 public:
   /// Update FixedReference to RAS and RAS to Patient transforms based on isocenter and patient support transforms.
   /// \param planNode: Plan node to get the isocenter position from

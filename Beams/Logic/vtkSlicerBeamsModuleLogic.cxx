@@ -318,7 +318,7 @@ void vtkSlicerBeamsModuleLogic::UpdateTransformForBeam(vtkMRMLScene* beamSequenc
     vtkErrorMacro("UpdateTransformForBeam: Invalid beam transform node");
     return;
   }
-
+  //TODO: beamSequenceScene is not used at all
   if (!beamSequenceScene)
   {
     vtkErrorMacro("UpdateTransformForBeam: Invalid MRML scene");
@@ -371,14 +371,8 @@ void vtkSlicerBeamsModuleLogic::UpdateBeamTransform(vtkMRMLRTBeamNode* beamNode,
     return;
   }
 
-  // Set beam angles to IEC logic
-  this->IECLogic->UpdateGantryToFixedReferenceTransform(beamNode->GetGantryAngle());
-  this->IECLogic->UpdateCollimatorToGantryTransform(beamNode->GetCollimatorAngle());
-  this->IECLogic->UpdatePatientSupportRotationToFixedReferenceTransform(beamNode->GetCouchAngle());
-
-  // Update fixed reference to RAS transform as well
-  vtkMRMLRTPlanNode* parentPlanNode = beamNode->GetParentPlanNode();
-  this->UpdateRASRelatedTransforms(parentPlanNode, isocenter);
+  // Update transforms in IEC logic from beam node parameters
+  this->UpdateIECTransformsFromBeam(beamNode, isocenter);
 
   vtkNew<vtkGeneralTransform> beamGeneralTransform;
   this->IECLogic->GetTransformBetween(vtkSlicerIECTransformLogic::Collimator, vtkSlicerIECTransformLogic::RAS, beamGeneralTransform, true);
@@ -394,6 +388,34 @@ void vtkSlicerBeamsModuleLogic::UpdateBeamTransform(vtkMRMLRTBeamNode* beamNode,
 
   // Set transform to beam node
   beamTransformNode->SetAndObserveTransformToParent(beamLinearTransform);
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlicerBeamsModuleLogic::UpdateIECTransformsFromBeam(vtkMRMLRTBeamNode* beamNode, double* isocenter)
+{
+  if (!beamNode)
+  {
+    vtkErrorMacro("UpdateIECTransformsFromBeam: Invalid beam node");
+    return;
+  }
+  if (!isocenter)
+  {
+    vtkMRMLScene* scene = beamNode->GetScene();
+    if (!scene || this->GetMRMLScene() != scene)
+    {
+      vtkErrorMacro("UpdateIECTransformsFromBeam: Invalid MRML scene");
+      return;
+    }
+  }
+
+  // Set beam angles to IEC logic
+  this->IECLogic->UpdateGantryToFixedReferenceTransform(beamNode->GetGantryAngle());
+  this->IECLogic->UpdateCollimatorToGantryTransform(beamNode->GetCollimatorAngle());
+  this->IECLogic->UpdatePatientSupportRotationToFixedReferenceTransform(beamNode->GetCouchAngle());
+
+  // Update fixed reference to RAS transform as well
+  vtkMRMLRTPlanNode* parentPlanNode = beamNode->GetParentPlanNode();
+  this->UpdateRASRelatedTransforms(parentPlanNode, isocenter);
 }
 
 //-----------------------------------------------------------------------------
