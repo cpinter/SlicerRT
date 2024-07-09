@@ -46,6 +46,7 @@ vtkStandardNewMacro(vtkSlicerBeamsModuleLogic);
 //----------------------------------------------------------------------------
 vtkSlicerBeamsModuleLogic::vtkSlicerBeamsModuleLogic()
   : MLCPositionLogic(vtkSlicerMLCPositionLogic::New())
+  , IECLogic(vtkSlicerIECTransformLogic::New())
 {
 }
 
@@ -56,6 +57,11 @@ vtkSlicerBeamsModuleLogic::~vtkSlicerBeamsModuleLogic()
   {
     this->MLCPositionLogic->Delete();
     this->MLCPositionLogic = nullptr;
+  }
+  if (this->IECLogic)
+  {
+    this->IECLogic->Delete();
+    this->IECLogic = nullptr;
   }
 }
 
@@ -166,45 +172,18 @@ void vtkSlicerBeamsModuleLogic::OnMRMLSceneEndImport()
 }
 
 //---------------------------------------------------------------------------
-void vtkSlicerBeamsModuleLogic::UpdateTransformForBeam(vtkMRMLRTBeamNode* beamNode)
+void vtkSlicerBeamsModuleLogic::SetIECLogic(vtkSlicerIECTransformLogic* iecLogic)
 {
-  if (!beamNode)
+  if (iecLogic == nullptr)
   {
-    vtkErrorMacro("UpdateTransformForBeam: Invalid beam node");
-    return;
-  }
-  vtkMRMLScene* scene = this->GetMRMLScene();
-  if (!scene)
-  {
-    vtkErrorMacro("UpdateTransformForBeam: Invalid MRML scene");
-    return;
+    return; // Do not set invalid IED logic because one is needed at all times
   }
 
-  this->UpdateBeamTransform(beamNode);
-}
+  // Delete existing logic to prevent memory leak
+  this->IECLogic->Delete();
+  this->IECLogic = nullptr;
 
-//---------------------------------------------------------------------------
-void vtkSlicerBeamsModuleLogic::UpdateTransformForBeam(vtkMRMLScene* beamSequenceScene, 
-  vtkMRMLRTBeamNode* beamNode, vtkMRMLLinearTransformNode* beamTransformNode, double* isocenter)
-{
-  if (!beamNode)
-  {
-    vtkErrorMacro("UpdateTransformForBeam: Invalid beam node");
-    return;
-  }
-  if (!beamTransformNode)
-  {
-    vtkErrorMacro("UpdateTransformForBeam: Invalid beam transform node");
-    return;
-  }
-
-  if (!beamSequenceScene)
-  {
-    vtkErrorMacro("UpdateTransformForBeam: Invalid MRML scene");
-    return;
-  }
-
-  this->UpdateBeamTransform(beamNode, beamTransformNode, isocenter);
+  vtkSetObjectBodyMacro(IECLogic, vtkSlicerIECTransformLogic, iecLogic);
 }
 
 //----------------------------------------------------------------------------
@@ -294,6 +273,62 @@ void vtkSlicerBeamsModuleLogic::ProcessMRMLNodesEvents(vtkObject* caller, unsign
 }
 
 //-----------------------------------------------------------------------------
+vtkMRMLLinearTransformNode* vtkSlicerBeamsModuleLogic::GetTransformNodeBetween(
+  vtkSlicerIECTransformLogic::CoordinateSystemIdentifier fromFrame, vtkSlicerIECTransformLogic::CoordinateSystemIdentifier toFrame)
+{
+  if (!this->GetMRMLScene())
+  {
+    vtkErrorMacro("GetTransformNodeBetween: Invalid MRML scene");
+    return nullptr;
+  }
+
+  return vtkMRMLLinearTransformNode::SafeDownCast(
+    this->GetMRMLScene()->GetFirstNodeByName(this->IECLogic->GetTransformNameBetween(fromFrame, toFrame).c_str()));
+}
+
+//---------------------------------------------------------------------------
+void vtkSlicerBeamsModuleLogic::UpdateTransformForBeam(vtkMRMLRTBeamNode* beamNode)
+{
+  if (!beamNode)
+  {
+    vtkErrorMacro("UpdateTransformForBeam: Invalid beam node");
+    return;
+  }
+  vtkMRMLScene* scene = this->GetMRMLScene();
+  if (!scene)
+  {
+    vtkErrorMacro("UpdateTransformForBeam: Invalid MRML scene");
+    return;
+  }
+
+  this->UpdateBeamTransform(beamNode);
+}
+
+//---------------------------------------------------------------------------
+void vtkSlicerBeamsModuleLogic::UpdateTransformForBeam(vtkMRMLScene* beamSequenceScene, 
+  vtkMRMLRTBeamNode* beamNode, vtkMRMLLinearTransformNode* beamTransformNode, double* isocenter)
+{
+  if (!beamNode)
+  {
+    vtkErrorMacro("UpdateTransformForBeam: Invalid beam node");
+    return;
+  }
+  if (!beamTransformNode)
+  {
+    vtkErrorMacro("UpdateTransformForBeam: Invalid beam transform node");
+    return;
+  }
+
+  if (!beamSequenceScene)
+  {
+    vtkErrorMacro("UpdateTransformForBeam: Invalid MRML scene");
+    return;
+  }
+
+  this->UpdateBeamTransform(beamNode, beamTransformNode, isocenter);
+}
+
+//-----------------------------------------------------------------------------
 void vtkSlicerBeamsModuleLogic::UpdateBeamTransform(vtkMRMLRTBeamNode* beamNode)
 {
   //TODO: Observe beam node's geometry modified event (vtkMRMLRTBeamNode::BeamGeometryModified)
@@ -359,20 +394,6 @@ void vtkSlicerBeamsModuleLogic::UpdateBeamTransform(vtkMRMLRTBeamNode* beamNode,
 
   // Set transform to beam node
   beamTransformNode->SetAndObserveTransformToParent(beamLinearTransform);
-}
-
-//-----------------------------------------------------------------------------
-vtkMRMLLinearTransformNode* vtkSlicerBeamsModuleLogic::GetTransformNodeBetween(
-  vtkSlicerIECTransformLogic::CoordinateSystemIdentifier fromFrame, vtkSlicerIECTransformLogic::CoordinateSystemIdentifier toFrame)
-{
-  if (!this->GetMRMLScene())
-  {
-    vtkErrorMacro("GetTransformNodeBetween: Invalid MRML scene");
-    return nullptr;
-  }
-
-  return vtkMRMLLinearTransformNode::SafeDownCast(
-    this->GetMRMLScene()->GetFirstNodeByName(this->IECLogic->GetTransformNameBetween(fromFrame, toFrame).c_str()));
 }
 
 //-----------------------------------------------------------------------------

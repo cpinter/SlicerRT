@@ -49,10 +49,14 @@ public:
   vtkTypeMacro(vtkSlicerBeamsModuleLogic,vtkSlicerModuleLogic);
   void PrintSelf(ostream& os, vtkIndent indent) override;
 
+  /// Get transform node between two coordinate systems is exists
+  /// \return Transform node if there is a direct transform between the specified coordinate frames, nullptr otherwise
+  ///   Note: If IEC does not specify a transform between the given coordinate frames, then there will be no node with the returned name.
+  vtkMRMLLinearTransformNode* GetTransformNodeBetween(
+    vtkSlicerIECTransformLogic::CoordinateSystemIdentifier fromFrame, vtkSlicerIECTransformLogic::CoordinateSystemIdentifier toFrame);
+
   /// Update parent transform of a given beam using its parameters and the IEC logic
   void UpdateTransformForBeam(vtkMRMLRTBeamNode* beamNode);
-
-  vtkGetObjectMacro(MLCPositionLogic, vtkSlicerMLCPositionLogic);
 
   /// Update parent transform of a given beam using its parameters and the IEC logic
   /// without using plan node (only isocenter position)
@@ -72,17 +76,16 @@ public:
   void UpdateBeamTransform(vtkMRMLRTBeamNode* beamNode, vtkMRMLLinearTransformNode* beamTransformNode, double* isocenter = nullptr);
 
 public:
-  /// Get transform node between two coordinate systems is exists
-  /// \return Transform node if there is a direct transform between the specified coordinate frames, nullptr otherwise
-  ///   Note: If IEC does not specify a transform between the given coordinate frames, then there will be no node with the returned name.
-  vtkMRMLLinearTransformNode* GetTransformNodeBetween(
-    vtkSlicerIECTransformLogic::CoordinateSystemIdentifier fromFrame, vtkSlicerIECTransformLogic::CoordinateSystemIdentifier toFrame);
-
-public:
   /// Update FixedReference to RAS and RAS to Patient transforms based on isocenter and patient support transforms.
   /// \param planNode: Plan node to get the isocenter position from
   /// \param isocenter: Option to set any isocenter for dynamic beams
   void UpdateRASRelatedTransforms(vtkMRMLRTPlanNode* planNode=nullptr, double* isocenter=nullptr);
+
+public:
+  vtkGetObjectMacro(MLCPositionLogic, vtkSlicerMLCPositionLogic);
+
+  /// Possibility to use an external IEC logic. This is useful for testing.
+  void SetIECLogic(vtkSlicerIECTransformLogic* iecLogic);
 
 protected:
   vtkSlicerBeamsModuleLogic();
@@ -106,8 +109,7 @@ private:
   vtkSlicerMLCPositionLogic* MLCPositionLogic;
 
 private:
-  vtkNew<vtkSlicerIECTransformLogic> IECLogic;
+  vtkSlicerIECTransformLogic* IECLogic;
 };
 
 #endif
-

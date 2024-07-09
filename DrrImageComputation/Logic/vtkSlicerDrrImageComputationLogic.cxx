@@ -1657,7 +1657,7 @@ vtkMRMLLinearTransformNode* vtkSlicerDrrImageComputationLogic::UpdateImageTransf
   vtkNew<vtkSlicerIECTransformLogic> iecLogic;
 
   // Update transforms in IEC logic from beam node parameters
-  //this->BeamsLogic->UpdateIECTransformsFromBeam(beamNode); //TODO:!!!
+  this->BeamsLogic->UpdateBeamTransform(beamNode);
   return nullptr;
   // (a BUG?) For RT Image correct orientation PatientSupport -> Fixed Reference MUST have a negative sign
   iecLogic->UpdatePatientSupportRotationToFixedReferenceTransform(-1. * beamNode->GetCouchAngle());
@@ -1701,7 +1701,7 @@ bool vtkSlicerDrrImageComputationLogic::GetRtImageTransformMatrixFromBeam(vtkMRM
   vtkNew<vtkSlicerIECTransformLogic> iecLogic;
 
   // Update transforms in IEC logic from beam node parameters
-  ///this->BeamsLogic->UpdateIECTransformsFromBeam(beamNode); //TODO:!!!
+  this->BeamsLogic->UpdateBeamTransform(beamNode);
   return false;
 
   // (a BUG?) For RT Image correct orientation PatientSupport -> Fixed Reference MUST have a negative sign
