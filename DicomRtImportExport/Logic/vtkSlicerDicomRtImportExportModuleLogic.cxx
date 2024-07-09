@@ -132,9 +132,6 @@
 
 //----------------------------------------------------------------------------
 vtkStandardNewMacro(vtkSlicerDicomRtImportExportModuleLogic);
-vtkCxxSetObjectMacro(vtkSlicerDicomRtImportExportModuleLogic, IsodoseLogic, vtkSlicerIsodoseModuleLogic);
-vtkCxxSetObjectMacro(vtkSlicerDicomRtImportExportModuleLogic, PlanarImageLogic, vtkSlicerPlanarImageModuleLogic);
-vtkCxxSetObjectMacro(vtkSlicerDicomRtImportExportModuleLogic, BeamsLogic, vtkSlicerBeamsModuleLogic);
 
 namespace
 {
@@ -1254,7 +1251,8 @@ bool vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::LoadDynamicBeamSequen
     vtkMRMLLinearTransformNode* transformNode = beamNode->CreateBeamTransformNode(scene);
     if (transformNode)
     {
-      if (this->External->BeamsLogic)
+      vtkSlicerBeamsModuleLogic* beamsLogic = vtkSlicerBeamsModuleLogic::SafeDownCast(this->External->GetModuleLogic("Beams"));
+      if (beamsLogic)
       {
         double* isocenter = rtReader->GetBeamControlPointIsocenterPositionRas( dicomBeamNumber, controlPointIndex);
         if (!isocenter)
@@ -1263,7 +1261,7 @@ bool vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::LoadDynamicBeamSequen
         }
 
         // Update beam transform without translation to isocenter
-        this->External->BeamsLogic->UpdateTransformForBeam( beamSequenceNode->GetSequenceScene(), beamNode, transformNode, isocenter);
+        beamsLogic->UpdateTransformForBeam( beamSequenceNode->GetSequenceScene(), beamNode, transformNode, isocenter);
 
         vtkTransform* transform = vtkTransform::SafeDownCast(transformNode->GetTransformToParent());
         if (isocenter)
@@ -1892,6 +1890,12 @@ void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::SetupRtImageGeometry(
     vtkErrorWithObjectMacro(this->External, "SetupRtImageGeometry: Failed to access subject hierarchy node");
     return;
   }
+  vtkSlicerPlanarImageModuleLogic* planarImageLogic = vtkSlicerPlanarImageModuleLogic::SafeDownCast(this->External->GetModuleLogic("PlanarImage"));
+  if (!planarImageLogic)
+  {
+    vtkErrorWithObjectMacro(this->External, "SetupRtImageGeometry: Planar image logic cannot be accessed");
+    return;
+  }
 
   // If the function is called from the LoadRtImage function with an RT image volume: find corresponding RT beam
   if (rtImageVolumeNode)
@@ -2142,7 +2146,7 @@ void vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::SetupRtImageGeometry(
   planarImageParameterSetNode->SetAndObserveDisplayedModelNode(displayedModelNode);
 
   // Create planar image model for the RT image
-  this->External->PlanarImageLogic->CreateModelForPlanarImage(planarImageParameterSetNode);
+  planarImageLogic->CreateModelForPlanarImage(planarImageParameterSetNode);
 
   // Hide the displayed planar image model by default
   displayedModelNode->SetDisplayVisibility(0);
@@ -2192,20 +2196,12 @@ vtkSlicerDicomRtImportExportModuleLogic::vtkSlicerDicomRtImportExportModuleLogic
 {
   this->Internal = new vtkInternal(this);
 
-  this->IsodoseLogic = nullptr;
-  this->PlanarImageLogic = nullptr;
-  this->BeamsLogic = nullptr;
-
   this->BeamModelsInSeparateBranch = true;
 }
 
 //----------------------------------------------------------------------------
 vtkSlicerDicomRtImportExportModuleLogic::~vtkSlicerDicomRtImportExportModuleLogic()
 {
-  this->SetIsodoseLogic(nullptr);
-  this->SetPlanarImageLogic(nullptr);
-  this->SetBeamsLogic(nullptr);
-
   if (this->Internal)
   {
     delete this->Internal;

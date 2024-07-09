@@ -79,14 +79,8 @@ public:
   /// Show/hide markups
   void ShowMarkupsNodes(bool toggled = false);
 
-  /// Set Planar Image module logic
-  //TODO: No need to do this now, can be accessed via application logic by name
-  void SetPlanarImageLogic(vtkSlicerPlanarImageModuleLogic* planarImageLogic);
   /// Set Plastimatch DRR CLI module logic
   void SetDRRComputationLogic(vtkSlicerCLIModuleLogic* plastimatchDrrLogic);
-  /// Set Beams module logic
-  //TODO: No need to do this now, can be accessed via application logic by name
-  void SetBeamsLogic(vtkSlicerBeamsModuleLogic* beamsLogic);
 
   /// Compute DRR image
   /// \param parameterNode - parameters of DRR image computation
