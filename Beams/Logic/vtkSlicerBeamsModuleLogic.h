@@ -61,7 +61,7 @@ public:
   /// @param beamTransformNode - parent transform of the beam according to the beam parameters and isocenter
   /// @param isocenter - isocenter position
   /// \warning This method is used only in vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::LoadDynamicBeamSequence
-  void UpdateTransformForBeam( vtkMRMLScene* beamSequenceScene, vtkMRMLRTBeamNode* beamNode, 
+  void UpdateTransformForBeam(vtkMRMLScene* beamSequenceScene, vtkMRMLRTBeamNode* beamNode, 
     vtkMRMLLinearTransformNode* beamTransformNode, double isocenter[3]);
 
 public:
@@ -79,11 +79,10 @@ public:
     vtkSlicerIECTransformLogic::CoordinateSystemIdentifier fromFrame, vtkSlicerIECTransformLogic::CoordinateSystemIdentifier toFrame);
 
 public:
-  ///// Update IEC transforms according to beam node
-  //void UpdateIECTransformsFromBeam(vtkMRMLRTBeamNode* beamNode, double* isocenter = nullptr);
-
-  /// Update fixed reference to RAS transform based on isocenter and patient support transforms
-  void UpdateFixedReferenceToRASTransform(vtkMRMLRTPlanNode* planNode = nullptr, double* isocenter = nullptr);
+  /// Update FixedReference to RAS and RAS to Patient transforms based on isocenter and patient support transforms.
+  /// \param planNode: Plan node to get the isocenter position from
+  /// \param isocenter: Option to set any isocenter for dynamic beams
+  void UpdateRASRelatedTransforms(vtkMRMLRTPlanNode* planNode=nullptr, double* isocenter=nullptr);
 
 protected:
   vtkSlicerBeamsModuleLogic();

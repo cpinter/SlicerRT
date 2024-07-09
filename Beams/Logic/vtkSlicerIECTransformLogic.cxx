@@ -271,15 +271,8 @@ bool vtkSlicerIECTransformLogic::GetTransformBetween(vtkSlicerIECTransformLogic:
       }
 
       vtkTransform* fromTransform = this->GetElementaryTransformBetween(child, parent);
-      //vtkMRMLLinearTransformNode* fromTransform = beamsLogic->GetTransformNodeBetween(child, parent);
       if (fromTransform)
       {
-        //vtkNew<vtkMatrix4x4> mat;
-        //fromTransform->GetMatrixTransformToParent(mat);
-        //outputTransform->Concatenate(mat);
-
-        //vtkDebugMacro("GetTransformBetween: Transform node \"" << fromTransform->GetName() << "\" is valid");
-
         outputTransform->Concatenate(fromTransform->GetMatrix());
       }
       else
@@ -301,23 +294,8 @@ bool vtkSlicerIECTransformLogic::GetTransformBetween(vtkSlicerIECTransformLogic:
       }
 
       vtkTransform* toTransform = this->GetElementaryTransformBetween(child, parent);
-      //vtkMRMLLinearTransformNode* toTransform = beamsLogic->GetTransformNodeBetween(child, parent);
       if (toTransform)
       {
-        //vtkNew<vtkMatrix4x4> mat;
-        //if (transformForBeam) // calculation for beam transformation
-        //{
-        //  toTransform->GetMatrixTransformFromParent(mat);
-        //}
-        //else // calculation for a treatment room models transformations
-        //{
-        //  toTransform->GetMatrixTransformToParent(mat);
-        //}
-        //mat->Invert();
-        //outputTransform->Concatenate(mat);
-
-        //vtkDebugMacro("GetTransformBetween: Transform node \"" << toTransform->GetName() << "\" is valid");
-
         vtkNew<vtkMatrix4x4> mat;
         toTransform->GetMatrix(mat);
         if (!transformForBeam) // Do not invert for beam transformation

@@ -433,8 +433,7 @@ void vtkSlicerRoomsEyeViewModuleLogic::BuildRoomsEyeViewTransformHierarchy()
     return;
   }
 
-  // Build IEC hierarchy
-  //TODO: Add the REV transform to the IEC transform map and use it for the GetTransform... functions
+  // Build IEC hierarchy in MRML
 
   // Create transform nodes if they do not exist
   for (auto& transformPair : this->IECLogic->GetIECTransforms())
@@ -581,7 +580,7 @@ void vtkSlicerRoomsEyeViewModuleLogic::BuildRoomsEyeViewTransformHierarchy()
 
 
   // Make sure the fixed reference to RAS is correct
-  beamsLogic->UpdateFixedReferenceToRASTransform();
+  beamsLogic->UpdateRASRelatedTransforms();
 }
 
 //----------------------------------------------------------------------------
