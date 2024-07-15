@@ -163,33 +163,33 @@ void vtkSlicerIECTransformLogic::PrintSelf(ostream& os, vtkIndent indent)
   this->Superclass::PrintSelf(os, indent);
 
   os << indent << std::endl << "Elementary tansforms:" << std::endl;
-  os << indent << "FixedReferenceToRasTransform: " << this->FixedReferenceToRasTransform << std::endl;
-  os << indent << "GantryToFixedReferenceTransform: " << this->GantryToFixedReferenceTransform << std::endl;
-  os << indent << "CollimatorToGantryTransform: " << this->CollimatorToGantryTransform << std::endl;
-  os << indent << "WedgeFilterToCollimatorTransform: " << this->WedgeFilterToCollimatorTransform << std::endl;
-  os << indent << "LeftImagingPanelToGantryTransform: " << this->LeftImagingPanelToGantryTransform << std::endl;
-  os << indent << "RightImagingPanelToGantryTransform: " << this->RightImagingPanelToGantryTransform << std::endl;
-  os << indent << "FlatPanelToGantryTransform: " << this->FlatPanelToGantryTransform << std::endl;
-  os << indent << "PatientSupportRotationToFixedReferenceTransform: " << this->PatientSupportRotationToFixedReferenceTransform << std::endl;
-  os << indent << "PatientSupportToPatientSupportRotationTransform: " << this->PatientSupportToPatientSupportRotationTransform << std::endl;
-  os << indent << "TableTopEccentricRotationToPatientSupportRotationTransform: " << this->TableTopEccentricRotationToPatientSupportRotationTransform << std::endl;
-  os << indent << "TableTopToTableTopEccentricRotationTransform: " << this->TableTopToTableTopEccentricRotationTransform << std::endl;
-  os << indent << "PatientToTableTopTransform: " << this->PatientToTableTopTransform << std::endl;
-  os << indent << "RasToPatientTransform: " << this->RasToPatientTransform << std::endl;
-  
-  os << indent << std::endl << "Concatenated transforms:" << std::endl;
-  os << indent << "GantryToFixedReferenceConcatenatedTransform: " << this->GantryToFixedReferenceConcatenatedTransform << std::endl;
-  os << indent << "CollimatorToGantryConcatenatedTransform: " << this->CollimatorToGantryConcatenatedTransform << std::endl;
-  os << indent << "WedgeFilterToCollimatorConcatenatedTransform: " << this->WedgeFilterToCollimatorConcatenatedTransform << std::endl;
-  os << indent << "LeftImagingPanelToGantryConcatenatedTransform: " << this->LeftImagingPanelToGantryConcatenatedTransform << std::endl;
-  os << indent << "RightImagingPanelToGantryConcatenatedTransform: " << this->RightImagingPanelToGantryConcatenatedTransform << std::endl;
-  os << indent << "FlatPanelToGantryConcatenatedTransform: " << this->FlatPanelToGantryConcatenatedTransform << std::endl;
-  os << indent << "PatientSupportRotationToFixedReferenceConcatenatedTransform: " << this->PatientSupportRotationToFixedReferenceConcatenatedTransform << std::endl;
-  os << indent << "PatientSupportToPatientSupportRotationConcatenatedTransform: " << this->PatientSupportToPatientSupportRotationConcatenatedTransform << std::endl;
-  os << indent << "TableTopEccentricRotationToPatientSupportRotationConcatenatedTransform: " << this->TableTopEccentricRotationToPatientSupportRotationConcatenatedTransform << std::endl;
-  os << indent << "TableTopToTableTopEccentricRotationConcatenatedTransform: " << this->TableTopToTableEccentricRotationConcatenatedTransform << std::endl;
-  os << indent << "PatientToTableTopConcatenatedTransform: " << this->PatientToTableTopConcatenatedTransform << std::endl;
-  os << indent << "RasToPatientConcatenatedTransform: " << this->RasToPatientConcatenatedTransform << std::endl;
+
+  os << indent.GetNextIndent() << "FixedReferenceToRasTransform:" << std::endl;
+  this->FixedReferenceToRasTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "GantryToFixedReferenceTransform:" << std::endl;
+  this->GantryToFixedReferenceTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "CollimatorToGantryTransform:" << std::endl;
+  this->CollimatorToGantryTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "WedgeFilterToCollimatorTransform:" << std::endl;
+  this->WedgeFilterToCollimatorTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "LeftImagingPanelToGantryTransform:" << std::endl;
+  this->LeftImagingPanelToGantryTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "RightImagingPanelToGantryTransform:" << std::endl;
+  this->RightImagingPanelToGantryTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "FlatPanelToGantryTransform:" << std::endl;
+  this->FlatPanelToGantryTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "PatientSupportRotationToFixedReferenceTransform:" << std::endl;
+  this->PatientSupportRotationToFixedReferenceTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "PatientSupportToPatientSupportRotationTransform:" << std::endl;
+  this->PatientSupportToPatientSupportRotationTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "TableTopEccentricRotationToPatientSupportRotationTransform:" << std::endl;
+  this->TableTopEccentricRotationToPatientSupportRotationTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "TableTopToTableTopEccentricRotationTransform:" << std::endl;
+  this->TableTopToTableTopEccentricRotationTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "PatientToTableTopTransform:" << std::endl;
+  this->PatientToTableTopTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
+  os << indent.GetNextIndent() << "RasToPatientTransform:" << std::endl;
+  this->RasToPatientTransform->GetMatrix()->PrintSelf(os, indent.GetNextIndent().GetNextIndent());
 }
 
 //----------------------------------------------------------------------------
