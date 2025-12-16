@@ -33,10 +33,11 @@
 // MRML includes
 #include <vtkMRMLDisplayNode.h>
 #include <vtkMRMLLinearTransformNode.h>
+#include <vtkMRMLMarkupsFiducialNode.h>
 #include <vtkMRMLModelNode.h>
 #include <vtkMRMLModelDisplayNode.h>
 #include <vtkMRMLScene.h>
-#include "vtkMRMLSubjectHierarchyNode.h"
+#include <vtkMRMLSubjectHierarchyNode.h>
 #include <vtkMRMLViewNode.h>
 
 // Slicer includes
@@ -84,7 +85,7 @@ public:
   vtkInternal(vtkSlicerRoomsEyeViewModuleLogic* external);
   ~vtkInternal();
 
-  vtkSlicerRoomsEyeViewModuleLogic* External; 
+  vtkSlicerRoomsEyeViewModuleLogic* External;
   rapidjson::Document* CurrentTreatmentMachineDescription{nullptr};
 
   /// Utility function to get element for treatment machine part
@@ -92,11 +93,13 @@ public:
   rapidjson::Value& GetTreatmentMachinePart(TreatmentMachinePartType partType);
   rapidjson::Value& GetTreatmentMachinePart(std::string partTypeStr);
 
+  vtkIdType EnsureMachineComponentsSubjectHierarchyFolder(vtkMRMLRoomsEyeViewNode* parameterNode);
   std::string GetTreatmentMachinePartFullFilePath(vtkMRMLRoomsEyeViewNode* parameterNode, std::string partPath);
   std::string GetTreatmentMachineFileNameWithoutExtension(vtkMRMLRoomsEyeViewNode* parameterNode);
   std::string GetTreatmentMachinePartModelName(vtkMRMLRoomsEyeViewNode* parameterNode, TreatmentMachinePartType partType);
   vtkMRMLModelNode* GetTreatmentMachinePartModelNode(vtkMRMLRoomsEyeViewNode* parameterNode, TreatmentMachinePartType partType);
   vtkMRMLModelNode* EnsureTreatmentMachinePartModelNode(vtkMRMLRoomsEyeViewNode* parameterNode, TreatmentMachinePartType partType, bool optional=false);
+  vtkMRMLMarkupsFiducialNode* EnsureTableCenterPointFiducialNode(vtkMRMLRoomsEyeViewNode* parameterNode);
 };
 
 //---------------------------------------------------------------------------
@@ -160,6 +163,34 @@ rapidjson::Value& vtkSlicerRoomsEyeViewModuleLogic::vtkInternal::GetTreatmentMac
 
   // Not found
   return JSON_EMPTY_VALUE;
+}
+
+//---------------------------------------------------------------------------
+vtkIdType vtkSlicerRoomsEyeViewModuleLogic::vtkInternal::EnsureMachineComponentsSubjectHierarchyFolder(vtkMRMLRoomsEyeViewNode* parameterNode)
+{
+  vtkMRMLScene* scene = this->External->GetMRMLScene();
+  if (!scene || !parameterNode)
+  {
+    vtkErrorWithObjectMacro(this->External, "EnsureMachineComponentsSubjectHierarchyFolder: Invalid scene or parameter node");
+    return vtkMRMLSubjectHierarchyNode::INVALID_ITEM_ID;
+  }
+  vtkMRMLSubjectHierarchyNode* shNode = scene->GetSubjectHierarchyNode();
+  if (!shNode)
+  {
+    vtkErrorWithObjectMacro(this->External, "EnsureMachineComponentsSubjectHierarchyFolder: Failed to access subject hierarchy node");
+    return vtkMRMLSubjectHierarchyNode::INVALID_ITEM_ID;
+  }
+
+  // Get root SH item
+  std::string machineType = this->GetTreatmentMachineFileNameWithoutExtension(parameterNode);
+  std::string rootFolderName = machineType + std::string("_Components");
+  vtkIdType rootFolderItem = shNode->GetItemChildWithName(shNode->GetSceneItemID(), rootFolderName);
+  if (!rootFolderItem)
+  {
+    // Create subject hierarchy folder so that the treatment machine can be shown/hidden easily
+    rootFolderItem = shNode->CreateFolderItem(shNode->GetSceneItemID(), rootFolderName);
+  }
+  return rootFolderItem;
 }
 
 //---------------------------------------------------------------------------
@@ -234,26 +265,17 @@ vtkMRMLModelNode* vtkSlicerRoomsEyeViewModuleLogic::vtkInternal::EnsureTreatment
   vtkMRMLScene* scene = this->External->GetMRMLScene();
   if (!scene || !parameterNode)
   {
-    vtkErrorWithObjectMacro(this->External, "GetTreatmentMachinePartModelName: Invalid scene or parameter node");
+    vtkErrorWithObjectMacro(this->External, "EnsureTreatmentMachinePartModelNode: Invalid scene or parameter node");
     return nullptr;
   }
   vtkMRMLSubjectHierarchyNode* shNode = scene->GetSubjectHierarchyNode();
   if (!shNode)
   {
-    vtkErrorWithObjectMacro(this->External, "LoadTreatmentMachine: Failed to access subject hierarchy node");
+    vtkErrorWithObjectMacro(this->External, "EnsureTreatmentMachinePartModelNode: Failed to access subject hierarchy node");
     return nullptr;
   }
 
-  // Get root SH item
-  std::string machineType = this->GetTreatmentMachineFileNameWithoutExtension(parameterNode);
-  std::string rootFolderName = machineType + std::string("_Components");
-  vtkIdType rootFolderItem = shNode->GetItemChildWithName(shNode->GetSceneItemID(), rootFolderName);
-  if (!rootFolderItem)
-  {
-    // Create subject hierarchy folder so that the treatment machine can be shown/hidden easily
-    rootFolderItem = shNode->CreateFolderItem(shNode->GetSceneItemID(), rootFolderName);
-  }
-
+  vtkIdType rootFolderItem = this->EnsureMachineComponentsSubjectHierarchyFolder(parameterNode);
   std::string partName = this->GetTreatmentMachinePartModelName(parameterNode, partType);
   vtkMRMLModelNode* partModelNode = this->GetTreatmentMachinePartModelNode(parameterNode, partType);
   if (!partModelNode)
@@ -268,10 +290,10 @@ vtkMRMLModelNode* vtkSlicerRoomsEyeViewModuleLogic::vtkInternal::EnsureTreatment
       }
       else
       {
-        vtkWarningWithObjectMacro(this->External, "LoadTreatmentMachine: State for part "
+        vtkWarningWithObjectMacro(this->External, "EnsureTreatmentMachinePartModelNode: State for part "
           << partName << " is set to Disabled but the part is mandatory. Loading anyway.");
       }
-    }     
+    }
     // Get model file path
     std::string partModelFilePath = this->External->GetFilePathForPartType(
       this->External->GetTreatmentMachinePartTypeAsString(partType));
@@ -279,7 +301,7 @@ vtkMRMLModelNode* vtkSlicerRoomsEyeViewModuleLogic::vtkInternal::EnsureTreatment
     {
       if (!optional)
       {
-        vtkErrorWithObjectMacro(this->External, "LoadTreatmentMachine: Failed get file path for part "
+        vtkErrorWithObjectMacro(this->External, "EnsureTreatmentMachinePartModelNode: Failed get file path for part "
           << partName << ". This mandatory part may be missing from the descriptor file");
       }
       return nullptr;
@@ -298,11 +320,46 @@ vtkMRMLModelNode* vtkSlicerRoomsEyeViewModuleLogic::vtkInternal::EnsureTreatment
     }
     else if (!optional)
     {
-      vtkErrorWithObjectMacro(this->External, "LoadTreatmentMachine: Failed to load " << partName << " model from file " << partModelFilePath);
+      vtkErrorWithObjectMacro(this->External, "EnsureTreatmentMachinePartModelNode: Failed to load " << partName << " model from file " << partModelFilePath);
       return nullptr;
     }
   }
   return partModelNode;
+}
+
+//---------------------------------------------------------------------------
+vtkMRMLMarkupsFiducialNode* vtkSlicerRoomsEyeViewModuleLogic::vtkInternal::EnsureTableCenterPointFiducialNode(vtkMRMLRoomsEyeViewNode* parameterNode)
+{
+  vtkMRMLScene* scene = this->External->GetMRMLScene();
+  if (!scene || !parameterNode)
+  {
+    vtkErrorWithObjectMacro(this->External, "EnsureTableCenterPointFiducialNode: Invalid scene or parameter node");
+    return nullptr;
+  }
+  if (parameterNode->GetTableCenterPointFiducialNode())
+  {
+    return parameterNode->GetTableCenterPointFiducialNode();
+  }
+  vtkMRMLSubjectHierarchyNode* shNode = scene->GetSubjectHierarchyNode();
+  if (!shNode)
+  {
+    vtkErrorWithObjectMacro(this->External, "EnsureTableCenterPointFiducialNode: Failed to access subject hierarchy node");
+    return nullptr;
+  }
+
+  vtkMRMLMarkupsFiducialNode* fiducialNode = vtkMRMLMarkupsFiducialNode::SafeDownCast(
+    scene->GetFirstNodeByName("TableCenterPoint"));
+  if (!fiducialNode)
+  {
+    fiducialNode = vtkMRMLMarkupsFiducialNode::SafeDownCast(
+      scene->AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "TableCenterPoint"));
+    parameterNode->SetAndObserveTableCenterPointFiducialNode(fiducialNode);
+    // Add node to the SH under the treatment machine components folder
+    vtkIdType rootFolderItem = this->EnsureMachineComponentsSubjectHierarchyFolder(parameterNode);
+    vtkIdType fiducialItemID = shNode->GetItemByDataNode(fiducialNode);
+    shNode->SetItemParent(fiducialItemID, rootFolderItem);
+  }
+  return fiducialNode;
 }
 
 //---------------------------------------------------------------------------
@@ -316,7 +373,7 @@ vtkSlicerRoomsEyeViewModuleLogic::vtkSlicerRoomsEyeViewModuleLogic()
   , CollimatorPatientCollisionDetection(nullptr)
   , CollimatorTableTopCollisionDetection(nullptr)
 {
-  this->Internal = new vtkInternal(this); 
+  this->Internal = new vtkInternal(this);
 
   this->IECLogic = vtkIECTransformLogic::New();
 
@@ -642,6 +699,9 @@ vtkSlicerRoomsEyeViewModuleLogic::LoadTreatmentMachine(vtkMRMLRoomsEyeViewNode* 
     vtkErrorMacro("LoadTreatmentMachine: Invalid parameter node");
     return std::vector<TreatmentMachinePartType>();
   }
+
+  // Create a table center point fiducial node if it does not exist yet
+  this->Internal->EnsureTableCenterPointFiducialNode(parameterNode);
 
   // Make sure the transform hierarchy is in place
   this->BuildRoomsEyeViewTransformHierarchy();

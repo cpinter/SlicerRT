@@ -66,7 +66,7 @@ public:
     ApplicatorHolder,
     ElectronApplicator,
     LastPartType
-    }; 
+    };
 
   static const char* ORIENTATION_MARKER_MODEL_NODE_NAME;
   static const char* TREATMENT_MACHINE_DESCRIPTOR_FILE_PATH_ATTRIBUTE_NAME;
@@ -115,7 +115,7 @@ public:
   void UpdateTableTopEccentricRotationToPatientSupportRotationTransform(vtkMRMLRoomsEyeViewNode* parameterNode);
   /// Update TableTopToTableTopEccentricRotation based on all three table top translations
   void UpdateTableTopToTableTopEccentricRotationTransform(vtkMRMLRoomsEyeViewNode* parameterNode);
- 
+
   /// Update orientation marker based on the current transforms
   vtkMRMLModelNode* UpdateTreatmentOrientationMarker(vtkMRMLRoomsEyeViewNode* parameterNode);
 

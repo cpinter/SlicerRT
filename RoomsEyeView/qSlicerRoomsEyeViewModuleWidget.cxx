@@ -39,6 +39,7 @@
 #include <qSlicerLayoutManager.h>
 #include <qSlicerIOManager.h>
 #include <qSlicerDataDialog.h>
+#include <qSlicerMarkupsPlaceWidget.h>
 #include <qSlicerSaveDataDialog.h>
 #include <qSlicerSubjectHierarchyFolderPlugin.h>
 #include <qSlicerSubjectHierarchyPluginHandler.h>
@@ -47,29 +48,32 @@
 #include <qMRMLThreeDView.h>
 
 // MRML includes
-#include <vtkMRMLScene.h>
-#include <vtkMRMLLinearTransformNode.h>
-#include <vtkMRMLDisplayNode.h>
-#include <vtkMRMLModelNode.h>
-#include <vtkMRMLSegmentationNode.h>
 #include <vtkMRMLCameraNode.h>
-#include <vtkMRMLViewNode.h>
+#include <vtkMRMLDisplayNode.h>
+#include <vtkMRMLLinearTransformNode.h>
+#include <vtkMRMLMarkupsFiducialNode.h>
+#include <vtkMRMLModelNode.h>
+#include <vtkMRMLScene.h>
+#include <vtkMRMLSegmentationNode.h>
 #include <vtkMRMLSliceNode.h>
-#include <vtkMRMLTransformNode.h>
 #include <vtkMRMLSubjectHierarchyNode.h>
+#include <vtkMRMLTransformNode.h>
+#include <vtkMRMLViewNode.h>
 
 // Qt includes
+#include <QAction>
 #include <QDebug>
 #include <QDir>
 #include <QFileDialog>
 
 // CTK includes
+#include <ctkColorPickerButton.h>
 #include <ctkMessageBox.h>
 #include <ctkSliderWidget.h>
 
 // VTK includes
 #include <vtkCamera.h>
-#include "vtkCollisionDetectionFilter.h"
+#include <vtkCollisionDetectionFilter.h>
 #include <vtkPolyData.h>
 #include <vtkMatrix4x4.h>
 #include <vtkTransform.h>
@@ -404,6 +408,18 @@ void qSlicerRoomsEyeViewModuleWidget::setup()
   d->LateralTableTopDisplacementSlider->setEnabled(false);
   d->ImagingPanelMovementSlider->setEnabled(false);
 
+  // Customize table position point picker
+  d->TableCenterPointPlaceWidget->findChild<ctkColorPickerButton*>("ColorButton")->setVisible(false);
+  d->TableCenterPointPlaceWidget->setDeleteAllControlPointsOptionVisible(false);
+  QAction* fixedNumberOfControlPointsAction = d->TableCenterPointPlaceWidget->findChild<QAction*>("ActionFixedNumberOfControlPoints");
+  if (fixedNumberOfControlPointsAction)
+  {
+    fixedNumberOfControlPointsAction->setVisible(false);
+  }
+  // Hide the entire table position group, because for now we set the table center point fiducial automatically from the patient body segmentation
+  d->TablePositionLabel->setVisible(false);
+  d->TableCenterPointPlaceWidget->setVisible(false);
+
   // Handle scene change event if occurs
   qvtkConnect(d->logic(), vtkCommand::ModifiedEvent, this, SLOT(onLogicModified()));
 }
@@ -448,8 +464,7 @@ void qSlicerRoomsEyeViewModuleWidget::onBeamNodeChanged(vtkMRMLNode* node)
   for (std::vector<vtkMRMLNode*>::iterator beamIt=beamNodes.begin(); beamIt!=beamNodes.end(); ++beamIt)
   {
     vtkMRMLRTBeamNode* currentBeamNode = vtkMRMLRTBeamNode::SafeDownCast(*beamIt);
-    shNode->SetItemDisplayVisibility(
-      shNode->GetItemByDataNode(currentBeamNode), (currentBeamNode == beamNode ? 1 : 0) );
+    shNode->SetItemDisplayVisibility(shNode->GetItemByDataNode(currentBeamNode), (currentBeamNode == beamNode ? 1 : 0) );
   }
 
   if (!beamNode)
@@ -528,6 +543,9 @@ void qSlicerRoomsEyeViewModuleWidget::onPatientBodySegmentChanged(QString segmen
   paramNode->DisableModifiedEventOn();
   paramNode->SetPatientBodySegmentID(segmentID.toUtf8().constData());
   paramNode->DisableModifiedEventOff();
+
+  // Automatically place table center point fiducial to the posterior center of the patient body segment
+  //d->logic()->AutoPlaceTableCenterPointFiducialFromPatientBodySegment(paramNode); //TODO: To implement
 }
 
 //-----------------------------------------------------------------------------
@@ -556,6 +574,13 @@ void qSlicerRoomsEyeViewModuleWidget::onLoadTreatmentMachineButtonClicked()
   }
 
   this->loadTreatmentMachineFromFile(descriptorFilePath);
+
+  // Set table center point fiducial to markups place widget
+  vtkMRMLRoomsEyeViewNode* paramNode = vtkMRMLRoomsEyeViewNode::SafeDownCast(d->MRMLNodeComboBox_ParameterSet->currentNode());
+  if (paramNode)
+  {
+    d->TableCenterPointPlaceWidget->setCurrentNode(paramNode->GetTableCenterPointFiducialNode());
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -1079,8 +1104,7 @@ void qSlicerRoomsEyeViewModuleWidget::setFixedReferenceCameraEnabled(bool toggle
 
   // Get FixedReference -> RAS transform node
   vtkMRMLLinearTransformNode* fixedReferenceToRasTransformNode = d->logic()->GetTransformNodeBetween(
-    vtkIECTransformLogic::FixedReference,
-    vtkIECTransformLogic::RAS);
+    vtkIECTransformLogic::FixedReference, vtkIECTransformLogic::RAS);
 
   vtkNew<vtkMatrix4x4> fixedReferenceToRasTransformMatrix;
   fixedReferenceToRasTransformMatrix->Identity();
