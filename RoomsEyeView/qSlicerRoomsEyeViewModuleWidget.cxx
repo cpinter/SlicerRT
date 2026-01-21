@@ -318,6 +318,12 @@ void qSlicerRoomsEyeViewModuleWidget::setParameterNode(vtkMRMLNode *node)
     {
       paramNode->SetPatientBodySegmentID(d->SegmentSelectorWidget_PatientBody->currentSegmentID().toUtf8().constData());
     }
+    // If body is selected, then initialize the table center point fiducial node
+    if (paramNode->GetPatientBodySegmentationNode() && paramNode->GetPatientBodySegmentID())
+    {
+      d->logic()->AutoPlaceTableCenterPointFiducialFromPatientBodySegment(paramNode);
+      d->logic()->UpdateTableCenterPointObservers(paramNode);
+    }
   }
 
   this->updateWidgetFromMRML();
@@ -407,18 +413,6 @@ void qSlicerRoomsEyeViewModuleWidget::setup()
   d->LongitudinalTableTopDisplacementSlider->setEnabled(false);
   d->LateralTableTopDisplacementSlider->setEnabled(false);
   d->ImagingPanelMovementSlider->setEnabled(false);
-
-  // Customize table position point picker
-  d->TableCenterPointPlaceWidget->findChild<ctkColorPickerButton*>("ColorButton")->setVisible(false);
-  d->TableCenterPointPlaceWidget->setDeleteAllControlPointsOptionVisible(false);
-  QAction* fixedNumberOfControlPointsAction = d->TableCenterPointPlaceWidget->findChild<QAction*>("ActionFixedNumberOfControlPoints");
-  if (fixedNumberOfControlPointsAction)
-  {
-    fixedNumberOfControlPointsAction->setVisible(false);
-  }
-  // Hide the entire table position group, because for now we set the table center point fiducial automatically from the patient body segmentation
-  d->TablePositionLabel->setVisible(false);
-  d->TableCenterPointPlaceWidget->setVisible(false);
 
   // Handle scene change event if occurs
   qvtkConnect(d->logic(), vtkCommand::ModifiedEvent, this, SLOT(onLogicModified()));
@@ -545,7 +539,7 @@ void qSlicerRoomsEyeViewModuleWidget::onPatientBodySegmentChanged(QString segmen
   paramNode->DisableModifiedEventOff();
 
   // Automatically place table center point fiducial to the posterior center of the patient body segment
-  //d->logic()->AutoPlaceTableCenterPointFiducialFromPatientBodySegment(paramNode); //TODO: To implement
+  d->logic()->AutoPlaceTableCenterPointFiducialFromPatientBodySegment(paramNode);
 }
 
 //-----------------------------------------------------------------------------
@@ -574,13 +568,6 @@ void qSlicerRoomsEyeViewModuleWidget::onLoadTreatmentMachineButtonClicked()
   }
 
   this->loadTreatmentMachineFromFile(descriptorFilePath);
-
-  // Set table center point fiducial to markups place widget
-  vtkMRMLRoomsEyeViewNode* paramNode = vtkMRMLRoomsEyeViewNode::SafeDownCast(d->MRMLNodeComboBox_ParameterSet->currentNode());
-  if (paramNode)
-  {
-    d->TableCenterPointPlaceWidget->setCurrentNode(paramNode->GetTableCenterPointFiducialNode());
-  }
 }
 
 //-----------------------------------------------------------------------------
@@ -843,7 +830,7 @@ void qSlicerRoomsEyeViewModuleWidget::onPatientSupportRotationSliderValueChanged
 
   // Update IEC transform
   d->logic()->UpdatePatientSupportRotationToFixedReferenceTransform(paramNode);
-  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode));
+  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
 
   // Update beam parameter
   vtkMRMLRTBeamNode* beamNode = vtkMRMLRTBeamNode::SafeDownCast(paramNode->GetBeamNode());
@@ -889,7 +876,7 @@ void qSlicerRoomsEyeViewModuleWidget::onVerticalTableTopDisplacementSliderValueC
 
   d->logic()->UpdatePatientSupportToPatientSupportRotationTransform(paramNode);
   d->logic()->UpdateTableTopToTableTopEccentricRotationTransform(paramNode);
-  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode));
+  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
 
   this->checkForCollisions();
   this->updateTreatmentOrientationMarker();
@@ -918,7 +905,7 @@ void qSlicerRoomsEyeViewModuleWidget::onLongitudinalTableTopDisplacementSliderVa
   paramNode->DisableModifiedEventOff();
 
   d->logic()->UpdateTableTopToTableTopEccentricRotationTransform(paramNode);
-  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode));
+  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
 
   this->checkForCollisions();
   this->updateTreatmentOrientationMarker();
@@ -949,7 +936,7 @@ void qSlicerRoomsEyeViewModuleWidget::onLateralTableTopDisplacementSliderValueCh
   paramNode->DisableModifiedEventOff();
 
   d->logic()->UpdateTableTopToTableTopEccentricRotationTransform(paramNode);
-  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode));
+  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
 
   this->checkForCollisions();
   this->updateTreatmentOrientationMarker();

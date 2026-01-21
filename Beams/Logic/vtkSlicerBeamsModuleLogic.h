@@ -27,20 +27,21 @@
 #ifndef __vtkSlicerBeamsModuleLogic_h
 #define __vtkSlicerBeamsModuleLogic_h
 
+// Beams includes
+#include "vtkSlicerBeamsModuleLogicExport.h"
+#include "vtkMRMLRTBeamNode.h"
+
 // Slicer includes
 #include "vtkSlicerModuleLogic.h"
 
 // IEC Logic include
 #include <vtkIECTransformLogic.h>
 
-// Beams includes
-#include "vtkSlicerBeamsModuleLogicExport.h"
-#include "vtkMRMLRTBeamNode.h"
-
 // VTK includes
 #include <vtkNew.h>
 
 class vtkSlicerMLCPositionLogic;
+class vtkMRMLMarkupsFiducialNode;
 
 /// \ingroup SlicerRt_QtModules_Beams
 class VTK_SLICER_BEAMS_LOGIC_EXPORT vtkSlicerBeamsModuleLogic : public vtkSlicerModuleLogic
@@ -60,7 +61,7 @@ public:
   /// @param beamTransformNode - parent transform of the beam according to the beam parameters and isocenter
   /// @param isocenter - isocenter position
   /// \warning This method is used only in vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::LoadDynamicBeamSequence
-  void UpdateTransformForBeam(vtkMRMLScene* beamSequenceScene, vtkMRMLRTBeamNode* beamNode, 
+  void UpdateTransformForBeam(vtkMRMLScene* beamSequenceScene, vtkMRMLRTBeamNode* beamNode,
     vtkMRMLLinearTransformNode* beamTransformNode, double isocenter[3]);
 
 public:
@@ -78,8 +79,11 @@ public:
   /// \param iecLogic: IEC logic to use for the update. Useful if the Room's Eye View module wants to use this function with its own configuration.
   /// \param planNode: Plan node to get the isocenter position from
   /// \param isocenter: Option to set any isocenter for dynamic beams
+  /// \param tableCenterFiducialNode: Option to set table center point for fixed reference to RAS transform
   /// \param transformForBeam: calculate dynamic transformation for beam model or other models. False by default.
-  void UpdateRASRelatedTransforms(vtkIECTransformLogic* iecLogic=nullptr, vtkMRMLRTPlanNode* planNode=nullptr, double* isocenter=nullptr, bool transformForBeam=false);
+  void UpdateRASRelatedTransforms(vtkIECTransformLogic* iecLogic=nullptr, vtkMRMLRTPlanNode* planNode=nullptr, double* isocenter=nullptr, vtkMRMLMarkupsFiducialNode* tableCenterFiducialNode=nullptr, bool transformForBeam=false);
+  void UpdateRASRelatedTransforms(vtkIECTransformLogic* iecLogic, vtkMRMLRTPlanNode* planNode, vtkMRMLMarkupsFiducialNode* tableCenterFiducialNode=nullptr);
+  void UpdateRASRelatedTransformsForBeam(vtkMRMLRTPlanNode* planNode, double* isocenter=nullptr);
 
 public:
   vtkGetObjectMacro(MLCPositionLogic, vtkSlicerMLCPositionLogic);
@@ -106,7 +110,7 @@ protected:
 private:
   vtkSlicerBeamsModuleLogic(const vtkSlicerBeamsModuleLogic&) = delete;
   void operator=(const vtkSlicerBeamsModuleLogic&) = delete;
-  
+
   vtkSlicerMLCPositionLogic* MLCPositionLogic;
 
 private:

@@ -74,7 +74,7 @@ void vtkSlicerBeamsModuleLogic::PrintSelf(ostream& os, vtkIndent indent)
 //-----------------------------------------------------------------------------
 void vtkSlicerBeamsModuleLogic::RegisterNodes()
 {
-  vtkMRMLScene* scene = this->GetMRMLScene(); 
+  vtkMRMLScene* scene = this->GetMRMLScene();
   if (!scene)
   {
     vtkErrorMacro("RegisterNodes: Invalid MRML scene");
@@ -158,7 +158,7 @@ void vtkSlicerBeamsModuleLogic::OnMRMLSceneEndImport()
     //   reason for this is possibly that the pipeline is set up with the file reader and on any modified
     //   event that pipeline is used instead of simply using the changed contents of the beam polydata.
     beamNode->SetAndObserveMesh(beamNode->GetMesh());
-    
+
     // Observe beam events
     vtkSmartPointer<vtkIntArray> events = vtkSmartPointer<vtkIntArray>::New();
     events->InsertNextValue(vtkMRMLRTBeamNode::BeamGeometryModified);
@@ -267,7 +267,7 @@ void vtkSlicerBeamsModuleLogic::ProcessMRMLNodesEvents(vtkObject* caller, unsign
       // Iterate through all beam nodes
       std::vector<vtkMRMLNode*> beamNodes;
       mrmlScene->GetNodesByClass("vtkMRMLRTBeamNode", beamNodes);
-      for (std::vector<vtkMRMLNode*>::iterator beamIterator = beamNodes.begin(); 
+      for (std::vector<vtkMRMLNode*>::iterator beamIterator = beamNodes.begin();
         beamIterator != beamNodes.end(); ++beamIterator)
       {
         // if caller node and referenced table node is the same
@@ -314,7 +314,7 @@ void vtkSlicerBeamsModuleLogic::UpdateTransformForBeam(vtkMRMLRTBeamNode* beamNo
 }
 
 //---------------------------------------------------------------------------
-void vtkSlicerBeamsModuleLogic::UpdateTransformForBeam(vtkMRMLScene* beamSequenceScene, 
+void vtkSlicerBeamsModuleLogic::UpdateTransformForBeam(vtkMRMLScene* beamSequenceScene,
   vtkMRMLRTBeamNode* beamNode, vtkMRMLLinearTransformNode* beamTransformNode, double* isocenter)
 {
   if (!beamNode)
@@ -426,12 +426,27 @@ void vtkSlicerBeamsModuleLogic::UpdateIECTransformsFromBeam(vtkMRMLRTBeamNode* b
 
   // Update fixed reference to RAS transform as well
   vtkMRMLRTPlanNode* parentPlanNode = beamNode->GetParentPlanNode();
-  this->UpdateRASRelatedTransforms(nullptr, parentPlanNode, isocenter, true);
+  //this->UpdateRASRelatedTransforms(nullptr, parentPlanNode, isocenter, true);
+  this->UpdateRASRelatedTransformsForBeam(parentPlanNode, isocenter);
 }
 
 //-----------------------------------------------------------------------------
 void vtkSlicerBeamsModuleLogic::UpdateRASRelatedTransforms(
-  vtkIECTransformLogic* iecLogic/*=nullptr*/, vtkMRMLRTPlanNode* planNode/*=nullptr*/, double* isocenter/*=nullptr*/, bool transformForBeam/*=false*/)
+  vtkIECTransformLogic* iecLogic, vtkMRMLRTPlanNode* planNode/*=nullptr*/, vtkMRMLMarkupsFiducialNode* tableCenterFiducialNode/*=nullptr*/)
+{
+  this->UpdateRASRelatedTransforms(iecLogic, planNode, nullptr, tableCenterFiducialNode);
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlicerBeamsModuleLogic::UpdateRASRelatedTransformsForBeam(vtkMRMLRTPlanNode* planNode, double* isocenter)
+{
+  this->UpdateRASRelatedTransforms(nullptr, planNode, isocenter, nullptr, true);
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlicerBeamsModuleLogic::UpdateRASRelatedTransforms(
+  vtkIECTransformLogic* iecLogic/*=nullptr*/, vtkMRMLRTPlanNode* planNode/*=nullptr*/,
+  double* isocenter/*=nullptr*/, vtkMRMLMarkupsFiducialNode* tableCenterFiducialNode/*=nullptr*/, bool transformForBeam/*=false*/)
 {
   if (!this->GetMRMLScene())
   {
@@ -454,16 +469,29 @@ void vtkSlicerBeamsModuleLogic::UpdateRASRelatedTransforms(
     return;
   }
 
+  double tableCenterPoint_RAS[3] = {0.0};
+  if (tableCenterFiducialNode != nullptr)
+  {
+    if (tableCenterFiducialNode->GetNumberOfControlPoints() > 0 &&
+      tableCenterFiducialNode->GetNthControlPointPositionStatus(0) == vtkMRMLMarkupsNode::PositionDefined)
+    {
+      tableCenterFiducialNode->GetNthControlPointPositionWorld(0, tableCenterPoint_RAS);
+      // fixedReferenceToRASTransformBeamComponent->Translate(tableCenterPoint_RAS);
+      // rasToPatientReferenceTransform->Translate(tableCenterPoint_RAS);
+    }
+  }
+
   // Reset transforms before applying translation and rotations
   fixedReferenceToRASTransformBeamComponent->Identity();
   rasToPatientReferenceTransform->Identity();
 
   // Apply isocenter translation if requested for both transforms
+vtkErrorMacro("ZZZ UpdateRASRelatedTransforms: planNode: " << (planNode ? planNode->GetName() : "null"));
   if (planNode)
   {
     if (isocenter)
     {
-      // Once again the dirty hack for dynamic beams, the actual translation 
+      // Once again the dirty hack for dynamic beams, the actual translation
       // will be in vtkSlicerDicomRtImportExportModuleLogic::vtkInternal::LoadDynamicBeamSequence method
       fixedReferenceToRASTransformBeamComponent->Translate(isocenter[0], isocenter[1], isocenter[2]); //TODO: This was always 0 before, confirm this change (to use isocenter if given as argument)
       rasToPatientReferenceTransform->Translate(isocenter[0], isocenter[1], isocenter[2]);

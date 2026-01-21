@@ -49,7 +49,8 @@
 
 // VTK includes
 #include <vtkAppendPolyData.h>
-#include "vtkCollisionDetectionFilter.h"
+#include <vtkCallbackCommand.h>
+#include <vtkCollisionDetectionFilter.h>
 #include <vtkGeneralTransform.h>
 #include <vtkMatrix4x4.h>
 #include <vtkObjectFactory.h>
@@ -100,6 +101,9 @@ public:
   vtkMRMLModelNode* GetTreatmentMachinePartModelNode(vtkMRMLRoomsEyeViewNode* parameterNode, TreatmentMachinePartType partType);
   vtkMRMLModelNode* EnsureTreatmentMachinePartModelNode(vtkMRMLRoomsEyeViewNode* parameterNode, TreatmentMachinePartType partType, bool optional=false);
   vtkMRMLMarkupsFiducialNode* EnsureTableCenterPointFiducialNode(vtkMRMLRoomsEyeViewNode* parameterNode);
+
+  /// Keep track of observers on the table center point fiducial node
+  std::vector<unsigned long> TableCenterPointFiducialNodeObserverTags;
 };
 
 //---------------------------------------------------------------------------
@@ -189,6 +193,7 @@ vtkIdType vtkSlicerRoomsEyeViewModuleLogic::vtkInternal::EnsureMachineComponents
   {
     // Create subject hierarchy folder so that the treatment machine can be shown/hidden easily
     rootFolderItem = shNode->CreateFolderItem(shNode->GetSceneItemID(), rootFolderName);
+    shNode->SetItemAttribute(rootFolderItem, TREATMENT_MACHINE_DESCRIPTOR_FILE_PATH_ATTRIBUTE_NAME, parameterNode->GetTreatmentMachineDescriptorFilePath());
   }
   return rootFolderItem;
 }
@@ -347,17 +352,20 @@ vtkMRMLMarkupsFiducialNode* vtkSlicerRoomsEyeViewModuleLogic::vtkInternal::Ensur
     return nullptr;
   }
 
-  vtkMRMLMarkupsFiducialNode* fiducialNode = vtkMRMLMarkupsFiducialNode::SafeDownCast(
-    scene->GetFirstNodeByName("TableCenterPoint"));
+  vtkMRMLMarkupsFiducialNode* fiducialNode = parameterNode->GetTableCenterPointFiducialNode();
   if (!fiducialNode)
   {
-    fiducialNode = vtkMRMLMarkupsFiducialNode::SafeDownCast(
-      scene->AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "TableCenterPoint"));
+    fiducialNode = vtkMRMLMarkupsFiducialNode::SafeDownCast(scene->AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "TableCenterPoint"));
+    fiducialNode->SetDisplayVisibility(false); // Hide fiducial by default
     parameterNode->SetAndObserveTableCenterPointFiducialNode(fiducialNode);
+    // Set reference so that we can get the parameter node from the fiducial node later
+    fiducialNode->SetNodeReferenceID("parameterNodeRef", parameterNode->GetID());
     // Add node to the SH under the treatment machine components folder
     vtkIdType rootFolderItem = this->EnsureMachineComponentsSubjectHierarchyFolder(parameterNode);
     vtkIdType fiducialItemID = shNode->GetItemByDataNode(fiducialNode);
     shNode->SetItemParent(fiducialItemID, rootFolderItem);
+    // Set up observer to handle changes
+    this->External->UpdateTableCenterPointObservers(parameterNode);
   }
   return fiducialNode;
 }
@@ -537,7 +545,7 @@ void vtkSlicerRoomsEyeViewModuleLogic::BuildRoomsEyeViewTransformHierarchy()
     {
       vtkSmartPointer<vtkMRMLLinearTransformNode> transformNode = vtkSmartPointer<vtkMRMLLinearTransformNode>::New();
       transformNode->SetName(transformNodeName.c_str());
-      transformNode->SetHideFromEditors(1);
+      // transformNode->SetHideFromEditors(1);  //TODO: Comment out for easier debugging
       std::string singletonTag = std::string("IEC_") + transformNodeName;
       transformNode->SetSingletonTag(singletonTag.c_str());
       this->GetMRMLScene()->AddNode(transformNode);
@@ -708,29 +716,26 @@ vtkSlicerRoomsEyeViewModuleLogic::LoadTreatmentMachine(vtkMRMLRoomsEyeViewNode* 
 
   std::string moduleShareDirectory = this->GetModuleShareDirectory();
   std::string descriptorFilePath(parameterNode->GetTreatmentMachineDescriptorFilePath());
-  std::string machineType = this->Internal->GetTreatmentMachineFileNameWithoutExtension(parameterNode);
 
   // Load treatment machine JSON descriptor file
-  FILE *fp = fopen(descriptorFilePath.c_str(), "r");
+  FILE* fp = fopen(descriptorFilePath.c_str(), "r");
   if (!fp)
-    {
-      vtkErrorMacro("LoadTreatmentMachine: Failed to load treatment machine descriptor file '" << descriptorFilePath << "'");
-      return std::vector<TreatmentMachinePartType>();
-    }
+  {
+    vtkErrorMacro("LoadTreatmentMachine: Failed to load treatment machine descriptor file '" << descriptorFilePath << "'");
+    return std::vector<TreatmentMachinePartType>();
+  }
   char buffer[4096];
   rapidjson::FileReadStream fs(fp, buffer, sizeof(buffer));
   if (this->Internal->CurrentTreatmentMachineDescription->ParseStream(fs).HasParseError())
-    {
-      vtkErrorMacro("LoadTreatmentMachine: Failed to load treatment machine descriptor file '" << descriptorFilePath << "'");
-      fclose(fp);
-      return std::vector<TreatmentMachinePartType>();
-    }
+  {
+    vtkErrorMacro("LoadTreatmentMachine: Failed to load treatment machine descriptor file '" << descriptorFilePath << "'");
+    fclose(fp);
+    return std::vector<TreatmentMachinePartType>();
+  }
   fclose(fp);
 
-  // Create subject hierarchy folder so that the treatment machine can be shown/hidden easily
-  std::string subjectHierarchyFolderName = machineType + std::string("_Components");
-  vtkIdType rootFolderItem = shNode->CreateFolderItem(shNode->GetSceneItemID(), subjectHierarchyFolderName);
-  shNode->SetItemAttribute(rootFolderItem, TREATMENT_MACHINE_DESCRIPTOR_FILE_PATH_ATTRIBUTE_NAME, descriptorFilePath);
+  // Make sure we have a subject hierarchy folder so that the treatment machine can be shown/hidden easily
+  this->Internal->EnsureMachineComponentsSubjectHierarchyFolder(parameterNode);
 
   // Load treatment machine models
 
@@ -1661,4 +1666,112 @@ std::string vtkSlicerRoomsEyeViewModuleLogic::GetStateForPartType(std::string pa
   }
 
   return stateStr;
+}
+
+//---------------------------------------------------------------------------
+void vtkSlicerRoomsEyeViewModuleLogic::AutoPlaceTableCenterPointFiducialFromPatientBodySegment(vtkMRMLRoomsEyeViewNode* parameterNode)
+{
+  if (!parameterNode)
+  {
+    vtkErrorMacro("AutoPlaceTableCenterPointFiducialFromPatientBodySegment: Invalid parameter set node");
+    return;
+  }
+  vtkMRMLMarkupsFiducialNode* tableCenterPointFiducialNode = parameterNode->GetTableCenterPointFiducialNode();
+  if (!tableCenterPointFiducialNode)
+  {
+    vtkErrorMacro("AutoPlaceTableCenterPointFiducialFromPatientBodySegment: Table center point fiducial node is not set");
+    return;
+  }
+
+  // Get patient body segmentation and segment
+  vtkMRMLSegmentationNode* segmentationNode = parameterNode->GetPatientBodySegmentationNode();
+  if (!segmentationNode || !parameterNode->GetPatientBodySegmentID())
+  {
+    vtkErrorMacro("AutoPlaceTableCenterPointFiducialFromPatientBodySegment: Patient body segmentation or segment ID not set");
+    return;
+  }
+  vtkSegment* patientBodySegment = segmentationNode->GetSegmentation()->GetSegment(parameterNode->GetPatientBodySegmentID());
+  if (!patientBodySegment)
+  {
+    vtkErrorMacro("AutoPlaceTableCenterPointFiducialFromPatientBodySegment: Failed to access patient body segment");
+    return;
+  }
+
+  // Calculate posterior center of the patient body segment
+  double bounds[6] = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
+  patientBodySegment->GetBounds(bounds);
+  double posteriorCenterRAS[3] = { (bounds[0] + bounds[1]) / 2.0, bounds[2], (bounds[4] + bounds[5]) / 2.0 };
+
+  // Set fiducial position
+  if (tableCenterPointFiducialNode->GetNumberOfFiducials() == 0)
+  {
+    tableCenterPointFiducialNode->AddControlPointWorld(posteriorCenterRAS, "TableCenter");
+  }
+  else
+  {
+    tableCenterPointFiducialNode->SetNthControlPointPositionWorld(0, posteriorCenterRAS);
+  }
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlicerRoomsEyeViewModuleLogic::UpdateTableCenterPointObservers(vtkMRMLRoomsEyeViewNode* parameterNode)
+{
+  if (!this->GetMRMLScene())
+  {
+    return;
+  }
+  vtkMRMLMarkupsFiducialNode* tableCenterPointNode = this->Internal->EnsureTableCenterPointFiducialNode(parameterNode);
+  if (!tableCenterPointNode)
+  {
+    return;
+  }
+
+  // Remove existing observers
+  for (unsigned long tag : this->Internal->TableCenterPointFiducialNodeObserverTags)
+  {
+    tableCenterPointNode->RemoveObserver(tag);
+  }
+  this->Internal->TableCenterPointFiducialNodeObserverTags.clear();
+
+  vtkNew<vtkCallbackCommand> callbackCommand;
+  callbackCommand->SetClientData(this);
+  callbackCommand->SetCallback([](vtkObject* caller, unsigned long, void* clientData, void*)
+  {
+    auto* self = static_cast<vtkSlicerRoomsEyeViewModuleLogic*>(clientData);
+    self->OnTableCenterPointChanged(vtkMRMLMarkupsFiducialNode::SafeDownCast(caller));
+  });
+
+  this->Internal->TableCenterPointFiducialNodeObserverTags.push_back(
+    tableCenterPointNode->AddObserver(vtkMRMLMarkupsNode::PointPositionDefinedEvent, callbackCommand));
+  this->Internal->TableCenterPointFiducialNodeObserverTags.push_back(
+    tableCenterPointNode->AddObserver(vtkMRMLMarkupsNode::PointPositionUndefinedEvent, callbackCommand));
+  this->Internal->TableCenterPointFiducialNodeObserverTags.push_back(
+    tableCenterPointNode->AddObserver(vtkMRMLMarkupsNode::PointEndInteractionEvent, callbackCommand));
+
+  this->OnTableCenterPointChanged(tableCenterPointNode);
+}
+
+//-----------------------------------------------------------------------------
+void vtkSlicerRoomsEyeViewModuleLogic::OnTableCenterPointChanged(vtkMRMLMarkupsFiducialNode* tableCenterFiducialNode)
+{
+  vtkSlicerBeamsModuleLogic* beamsLogic = this->GetBeamsLogic();
+  if (!beamsLogic)
+  {
+    vtkErrorMacro("OnTableCenterPointChanged: Beams logic cannot be accessed");
+    return;
+  }
+  if (tableCenterFiducialNode == nullptr)
+  {
+    vtkErrorMacro("OnTableCenterPointChanged: Invalid table center point fiducial node");
+    return;
+  }
+  vtkMRMLRoomsEyeViewNode* parameterNode = vtkMRMLRoomsEyeViewNode::SafeDownCast(
+    tableCenterFiducialNode->GetNodeReference("parameterNodeRef") );
+  if (!parameterNode)
+  {
+    vtkErrorMacro("OnTableCenterPointChanged: Parameter set node not found from table center point fiducial node");
+    return;
+  }
+
+  beamsLogic->UpdateRASRelatedTransforms(this->IECLogic);
 }
