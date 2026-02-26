@@ -321,6 +321,7 @@ void qSlicerRoomsEyeViewModuleWidget::setParameterNode(vtkMRMLNode *node)
     // If body is selected, then initialize the table center point fiducial node
     if (paramNode->GetPatientBodySegmentationNode() && paramNode->GetPatientBodySegmentID())
     {
+      //TODO: Only auto-place the fiducial if the user has not changed it manually
       d->logic()->AutoPlaceTableCenterPointFiducialFromPatientBodySegment(paramNode);
       d->logic()->UpdateTableCenterPointObservers(paramNode);
     }
@@ -830,7 +831,7 @@ void qSlicerRoomsEyeViewModuleWidget::onPatientSupportRotationSliderValueChanged
 
   // Update IEC transform
   d->logic()->UpdatePatientSupportRotationToFixedReferenceTransform(paramNode);
-  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
+  beamsLogic->UpdateFixedReferenceToRASTransform(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
 
   // Update beam parameter
   vtkMRMLRTBeamNode* beamNode = vtkMRMLRTBeamNode::SafeDownCast(paramNode->GetBeamNode());
@@ -876,7 +877,7 @@ void qSlicerRoomsEyeViewModuleWidget::onVerticalTableTopDisplacementSliderValueC
 
   d->logic()->UpdatePatientSupportToPatientSupportRotationTransform(paramNode);
   d->logic()->UpdateTableTopToTableTopEccentricRotationTransform(paramNode);
-  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
+  beamsLogic->UpdateFixedReferenceToRASTransform(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
 
   this->checkForCollisions();
   this->updateTreatmentOrientationMarker();
@@ -905,7 +906,7 @@ void qSlicerRoomsEyeViewModuleWidget::onLongitudinalTableTopDisplacementSliderVa
   paramNode->DisableModifiedEventOff();
 
   d->logic()->UpdateTableTopToTableTopEccentricRotationTransform(paramNode);
-  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
+  beamsLogic->UpdateFixedReferenceToRASTransform(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
 
   this->checkForCollisions();
   this->updateTreatmentOrientationMarker();
@@ -936,7 +937,7 @@ void qSlicerRoomsEyeViewModuleWidget::onLateralTableTopDisplacementSliderValueCh
   paramNode->DisableModifiedEventOff();
 
   d->logic()->UpdateTableTopToTableTopEccentricRotationTransform(paramNode);
-  beamsLogic->UpdateRASRelatedTransforms(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
+  beamsLogic->UpdateFixedReferenceToRASTransform(d->logic()->GetIECLogic(), d->currentPlanNode(paramNode), paramNode->GetTableCenterPointFiducialNode());
 
   this->checkForCollisions();
   this->updateTreatmentOrientationMarker();

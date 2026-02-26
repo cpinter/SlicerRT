@@ -75,15 +75,21 @@ public:
   void UpdateIECTransformsFromBeam(vtkMRMLRTBeamNode* beamNode, double* isocenter=nullptr);
 
 public:
-  /// Update FixedReference to RAS and RAS to Patient transforms based on isocenter and patient support transforms.
-  /// \param iecLogic: IEC logic to use for the update. Useful if the Room's Eye View module wants to use this function with its own configuration.
+  /// Update FixedReference to RAS and RAS to Patient transforms.
+  /// Gets isocenter from plan node and table center from fiducial if available.
+  /// \param iecLogic: IEC logic to use (nullptr to use this->IECLogic). Useful for Room's Eye View module.
+  /// \param planNode: Plan node to get the isocenter position from (optional)
+  /// \param tableCenterFiducialNode: Table center point fiducial for positioning (optional)
+  void UpdateFixedReferenceToRASTransform(
+    vtkIECTransformLogic* iecLogic = nullptr,
+    vtkMRMLRTPlanNode* planNode = nullptr,
+    vtkMRMLMarkupsFiducialNode* tableCenterFiducialNode = nullptr);
+
+  /// Update FixedReference to RAS transform for beam with dynamic transforms.
+  /// Automatically uses beam's parent plan and explicit isocenter position if provided.
   /// \param planNode: Plan node to get the isocenter position from
-  /// \param isocenter: Option to set any isocenter for dynamic beams
-  /// \param tableCenterFiducialNode: Option to set table center point for fixed reference to RAS transform
-  /// \param transformForBeam: calculate dynamic transformation for beam model or other models. False by default.
-  void UpdateRASRelatedTransforms(vtkIECTransformLogic* iecLogic=nullptr, vtkMRMLRTPlanNode* planNode=nullptr, double* isocenter=nullptr, vtkMRMLMarkupsFiducialNode* tableCenterFiducialNode=nullptr, bool transformForBeam=false);
-  void UpdateRASRelatedTransforms(vtkIECTransformLogic* iecLogic, vtkMRMLRTPlanNode* planNode, vtkMRMLMarkupsFiducialNode* tableCenterFiducialNode=nullptr);
-  void UpdateRASRelatedTransformsForBeam(vtkMRMLRTPlanNode* planNode, double* isocenter=nullptr);
+  /// \param isocenterPosition: Explicit isocenter coordinates (for dynamic beams), uses plan if nullptr
+  void UpdateFixedReferenceToRASTransformForBeam(vtkMRMLRTPlanNode* planNode, double* isocenterPosition = nullptr);
 
 public:
   vtkGetObjectMacro(MLCPositionLogic, vtkSlicerMLCPositionLogic);
@@ -111,9 +117,19 @@ private:
   vtkSlicerBeamsModuleLogic(const vtkSlicerBeamsModuleLogic&) = delete;
   void operator=(const vtkSlicerBeamsModuleLogic&) = delete;
 
-  vtkSlicerMLCPositionLogic* MLCPositionLogic;
+  /// Internal implementation for updating FixedReference to RAS transform
+  /// \param iecLogic: IEC logic to use for the update
+  /// \param isocenterPosition: Isocenter position in RAS coordinates
+  /// \param tableCenterPosition: Table center position in RAS coordinates
+  /// \param useDynamicTransforms: Use dynamic transforms for beam models
+  void UpdateFixedReferenceToRASTransformInternal(
+    vtkIECTransformLogic* iecLogic,
+    double isocenterPosition[3],
+    double tableCenterPosition[3],
+    bool useDynamicTransforms);
 
 private:
+  vtkSlicerMLCPositionLogic* MLCPositionLogic;
   vtkIECTransformLogic* IECLogic;
 };
 

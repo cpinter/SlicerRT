@@ -683,7 +683,7 @@ void vtkSlicerRoomsEyeViewModuleLogic::BuildRoomsEyeViewTransformHierarchy()
 
 
   // Make sure the fixed reference to RAS is correct
-  beamsLogic->UpdateRASRelatedTransforms(this->IECLogic);
+  beamsLogic->UpdateFixedReferenceToRASTransform(this->IECLogic);
 }
 
 //----------------------------------------------------------------------------
@@ -1703,7 +1703,7 @@ void vtkSlicerRoomsEyeViewModuleLogic::AutoPlaceTableCenterPointFiducialFromPati
   double posteriorCenterRAS[3] = { (bounds[0] + bounds[1]) / 2.0, bounds[2], (bounds[4] + bounds[5]) / 2.0 };
 
   // Set fiducial position
-  if (tableCenterPointFiducialNode->GetNumberOfFiducials() == 0)
+  if (tableCenterPointFiducialNode->GetNumberOfControlPoints() == 0)
   {
     tableCenterPointFiducialNode->AddControlPointWorld(posteriorCenterRAS, "TableCenter");
   }
@@ -1773,5 +1773,5 @@ void vtkSlicerRoomsEyeViewModuleLogic::OnTableCenterPointChanged(vtkMRMLMarkupsF
     return;
   }
 
-  beamsLogic->UpdateRASRelatedTransforms(this->IECLogic);
+  beamsLogic->UpdateFixedReferenceToRASTransform(this->IECLogic);
 }
