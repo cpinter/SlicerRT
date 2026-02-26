@@ -454,14 +454,15 @@ void vtkSlicerBeamsModuleLogic::UpdateFixedReferenceToRASTransform(
   }
 
   double tableCenterPosition[3] = {0.0, 0.0, 0.0};
-  if (tableCenterFiducialNode != nullptr &&
-      tableCenterFiducialNode->GetNumberOfControlPoints() > 0 &&
-      tableCenterFiducialNode->GetNthControlPointPositionStatus(0) == vtkMRMLMarkupsNode::PositionDefined)
+  bool tableCenterPositionDefined = (tableCenterFiducialNode != nullptr &&
+    tableCenterFiducialNode->GetNumberOfControlPoints() > 0 &&
+    tableCenterFiducialNode->GetNthControlPointPositionStatus(0) == vtkMRMLMarkupsNode::PositionDefined);
+  if (tableCenterPositionDefined)
   {
     tableCenterFiducialNode->GetNthControlPointPositionWorld(0, tableCenterPosition);
   }
 
-  this->UpdateFixedReferenceToRASTransformInternal(iecLogic, isocenterPosition, tableCenterPosition, false);
+  this->UpdateFixedReferenceToRASTransformInternal(iecLogic, isocenterPosition, tableCenterPosition, tableCenterPositionDefined, false);
 }
 
 //-----------------------------------------------------------------------------
@@ -490,13 +491,13 @@ void vtkSlicerBeamsModuleLogic::UpdateFixedReferenceToRASTransformForBeam(
   }
 
   double tableCenterPosition[3] = {0.0, 0.0, 0.0};
-  this->UpdateFixedReferenceToRASTransformInternal(this->IECLogic, isocenter, tableCenterPosition, true);
+  this->UpdateFixedReferenceToRASTransformInternal(this->IECLogic, isocenter, tableCenterPosition, false, true);
 }
 
 //-----------------------------------------------------------------------------
 void vtkSlicerBeamsModuleLogic::UpdateFixedReferenceToRASTransformInternal(
   vtkIECTransformLogic* iecLogic, double isocenterPosition[3], double tableCenterPosition[3],
-  bool useDynamicTransforms)
+  bool tableCenterPositionDefined, bool useDynamicTransforms)
 {
   // Update IEC FixedReference to RAS transform based on the isocenter and table center.
   // Also updates RAS to Patient transform.
@@ -513,16 +514,52 @@ void vtkSlicerBeamsModuleLogic::UpdateFixedReferenceToRASTransformInternal(
   fixedReferenceToRASTransformBeamComponent->Identity();
   rasToPatientReferenceTransform->Identity();
 
-  // Apply table center translation if provided
-  if (tableCenterPosition[0] != 0.0 || tableCenterPosition[1] != 0.0 || tableCenterPosition[2] != 0.0)
+  if (tableCenterPositionDefined)
   {
-    fixedReferenceToRASTransformBeamComponent->Translate(tableCenterPosition);
-    rasToPatientReferenceTransform->Translate(tableCenterPosition);
-  }
+    // VirtualCathLab-style "table center point driven world alignment":
+    // Align the TableTop origin (IEC [0,0,0] in TableTop frame) to the table center fiducial
+    // position in RAS, accounting for current table displacements, eccentric rotation, and couch
+    // rotation. This is analogous to VirtualCathLab's updateGantryToRASTransform() which adjusts
+    // the gantry->RAS transform by (tableCenterPoint_RAS - tableOrigin_RAS). In SlicerRT, the
+    // FixedReference->RAS transform plays the same role as VirtualCathLab's gantry->RAS.
+    //
+    // Steps:
+    //   1. Get the full chain TableTop->FixedReference to find the TableTop origin in FixedReference.
+    //   2. Apply the base IEC-to-RAS rotation to get the rotated TableTop origin position in RAS
+    //      (as if FixedReference->RAS had no translation).
+    //   3. Compute translation = tableCenterPosition - rotated_tableTop_origin_in_RAS, so that the
+    //      full chain maps TableTop[0,0,0] to tableCenterPosition in RAS.
+    vtkNew<vtkGeneralTransform> tableTopToFixedReferenceTransform;
+    iecLogic->GetTransformBetween(
+      vtkIECTransformLogic::TableTop, vtkIECTransformLogic::FixedReference,
+      tableTopToFixedReferenceTransform, useDynamicTransforms);
 
-  // Apply isocenter translation
-  if (isocenterPosition[0] != 0.0 || isocenterPosition[1] != 0.0 || isocenterPosition[2] != 0.0)
+    // Transform the TableTop origin to FixedReference space
+    double tableTopOriginInFixedRef[3] = {0.0, 0.0, 0.0};
+    tableTopToFixedReferenceTransform->TransformPoint(tableTopOriginInFixedRef, tableTopOriginInFixedRef);
+
+    // Apply the base IEC-to-RAS rotation (no translation) to get the rotated position in RAS.
+    // The "S" direction in RAS corresponds to the "A" direction in FixedReference,
+    // and "S" toward the gantry (head-first) by default.
+    vtkNew<vtkTransform> baseRotation;
+    baseRotation->RotateX(-90.0);
+    baseRotation->RotateZ(180.0);
+    double tableTopOriginInRAS[3] = {0.0, 0.0, 0.0};
+    baseRotation->TransformPoint(tableTopOriginInFixedRef, tableTopOriginInRAS);
+
+    // Compute the translation that aligns the TableTop origin to the table center fiducial in RAS
+    double tableCenterTranslation[3] = {
+      tableCenterPosition[0] - tableTopOriginInRAS[0],
+      tableCenterPosition[1] - tableTopOriginInRAS[1],
+      tableCenterPosition[2] - tableTopOriginInRAS[2]
+    };
+    fixedReferenceToRASTransformBeamComponent->Translate(tableCenterTranslation);
+    rasToPatientReferenceTransform->Translate(tableCenterTranslation);
+  }
+  else if (isocenterPosition[0] != 0.0 || isocenterPosition[1] != 0.0 || isocenterPosition[2] != 0.0)
   {
+    // Traditional isocenter-based alignment: the FixedReference origin (IEC machine isocenter)
+    // maps to the isocenter's RAS position.
     fixedReferenceToRASTransformBeamComponent->Translate(isocenterPosition);
     rasToPatientReferenceTransform->Translate(isocenterPosition);
   }
@@ -542,35 +579,40 @@ void vtkSlicerBeamsModuleLogic::UpdateFixedReferenceToRASTransformInternal(
   fixedReferenceToRASTransformBeamComponent->RotateZ(180.0);
   fixedReferenceToRASTransformBeamComponent->Modified();
 
-  // Set up concatenation for final fixed reference to RAS transform
-  vtkNew<vtkGeneralTransform> tableTopToTableTopEccentricRotationGeneralTransform;
-  iecLogic->GetTransformBetween(
-    vtkIECTransformLogic::TableTop, vtkIECTransformLogic::TableTopEccentricRotation,
-    tableTopToTableTopEccentricRotationGeneralTransform, useDynamicTransforms);
-  vtkNew<vtkTransform> tableTopToTableTopEccentricRotationLinearTransform;
-  if (!vtkMRMLTransformNode::IsGeneralTransformLinear(tableTopToTableTopEccentricRotationGeneralTransform, tableTopToTableTopEccentricRotationLinearTransform))
-  {
-    vtkErrorMacro("UpdateFixedReferenceToRASTransformInternal: IEC transform TableTop to TableTopEccentricRotation contains non-linear components");
-    return;
-  }
-
-  vtkNew<vtkGeneralTransform> patientSupportRotationToFixedReferenceGeneralTransform;
-  iecLogic->GetTransformBetween(
-    vtkIECTransformLogic::PatientSupportRotation, vtkIECTransformLogic::FixedReference,
-    patientSupportRotationToFixedReferenceGeneralTransform, useDynamicTransforms);
-  vtkNew<vtkTransform> patientSupportRotationToFixedReferenceLinearTransform;
-  if (!vtkMRMLTransformNode::IsGeneralTransformLinear(patientSupportRotationToFixedReferenceGeneralTransform, patientSupportRotationToFixedReferenceLinearTransform))
-  {
-    vtkErrorMacro("UpdateFixedReferenceToRASTransformInternal: IEC transform PatientSupportRotation to FixedReference contains non-linear components");
-    return;
-  }
-
   vtkNew<vtkTransform> fixedReferenceToRASTransformNew;
   fixedReferenceToRASTransformNew->Concatenate(fixedReferenceToRASTransformBeamComponent);
-  tableTopToTableTopEccentricRotationLinearTransform->Inverse();
-  fixedReferenceToRASTransformNew->Concatenate(tableTopToTableTopEccentricRotationLinearTransform);
-  patientSupportRotationToFixedReferenceLinearTransform->Inverse();
-  fixedReferenceToRASTransformNew->Concatenate(patientSupportRotationToFixedReferenceLinearTransform);
+
+  if (!tableCenterPositionDefined)
+  {
+    // Isocenter-only case: apply table chain correction to keep the table top stationary relative
+    // to the patient as table displacements (vertical/longitudinal/lateral) change.
+    vtkNew<vtkGeneralTransform> tableTopToTableTopEccentricRotationGeneralTransform;
+    iecLogic->GetTransformBetween(
+      vtkIECTransformLogic::TableTop, vtkIECTransformLogic::TableTopEccentricRotation,
+      tableTopToTableTopEccentricRotationGeneralTransform, useDynamicTransforms);
+    vtkNew<vtkTransform> tableTopToTableTopEccentricRotationLinearTransform;
+    if (!vtkMRMLTransformNode::IsGeneralTransformLinear(tableTopToTableTopEccentricRotationGeneralTransform, tableTopToTableTopEccentricRotationLinearTransform))
+    {
+      vtkErrorMacro("UpdateFixedReferenceToRASTransformInternal: IEC transform TableTop to TableTopEccentricRotation contains non-linear components");
+      return;
+    }
+
+    vtkNew<vtkGeneralTransform> patientSupportRotationToFixedReferenceGeneralTransform;
+    iecLogic->GetTransformBetween(
+      vtkIECTransformLogic::PatientSupportRotation, vtkIECTransformLogic::FixedReference,
+      patientSupportRotationToFixedReferenceGeneralTransform, useDynamicTransforms);
+    vtkNew<vtkTransform> patientSupportRotationToFixedReferenceLinearTransform;
+    if (!vtkMRMLTransformNode::IsGeneralTransformLinear(patientSupportRotationToFixedReferenceGeneralTransform, patientSupportRotationToFixedReferenceLinearTransform))
+    {
+      vtkErrorMacro("UpdateFixedReferenceToRASTransformInternal: IEC transform PatientSupportRotation to FixedReference contains non-linear components");
+      return;
+    }
+
+    tableTopToTableTopEccentricRotationLinearTransform->Inverse();
+    fixedReferenceToRASTransformNew->Concatenate(tableTopToTableTopEccentricRotationLinearTransform);
+    patientSupportRotationToFixedReferenceLinearTransform->Inverse();
+    fixedReferenceToRASTransformNew->Concatenate(patientSupportRotationToFixedReferenceLinearTransform);
+  }
 
   // Update fixed reference to RAS transform in IEC logic
   vtkTransform* fixedReferenceToRASTransform = iecLogic->GetElementaryTransformBetween(

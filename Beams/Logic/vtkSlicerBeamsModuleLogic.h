@@ -120,12 +120,14 @@ private:
   /// Internal implementation for updating FixedReference to RAS transform
   /// \param iecLogic: IEC logic to use for the update
   /// \param isocenterPosition: Isocenter position in RAS coordinates
-  /// \param tableCenterPosition: Table center position in RAS coordinates
+  /// \param tableCenterPosition: Table center position in RAS coordinates (only used if tableCenterPositionDefined is true)
+  /// \param tableCenterPositionDefined: True if a table center fiducial was provided and has a defined position
   /// \param useDynamicTransforms: Use dynamic transforms for beam models
   void UpdateFixedReferenceToRASTransformInternal(
     vtkIECTransformLogic* iecLogic,
     double isocenterPosition[3],
     double tableCenterPosition[3],
+    bool tableCenterPositionDefined,
     bool useDynamicTransforms);
 
 private:

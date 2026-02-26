@@ -28,6 +28,7 @@
 
 // SlicerRT includes
 #include "vtkMRMLRTBeamNode.h"
+#include "vtkMRMLRTPlanNode.h"
 #include "vtkSlicerBeamsModuleLogic.h"
 
 // MRML includes
@@ -1773,5 +1774,9 @@ void vtkSlicerRoomsEyeViewModuleLogic::OnTableCenterPointChanged(vtkMRMLMarkupsF
     return;
   }
 
-  beamsLogic->UpdateFixedReferenceToRASTransform(this->IECLogic);
+  // Get the plan node from the beam node (if available) to provide the isocenter as fallback
+  vtkMRMLRTBeamNode* beamNode = parameterNode->GetBeamNode();
+  vtkMRMLRTPlanNode* planNode = beamNode ? beamNode->GetParentPlanNode() : nullptr;
+
+  beamsLogic->UpdateFixedReferenceToRASTransform(this->IECLogic, planNode, tableCenterFiducialNode);
 }
